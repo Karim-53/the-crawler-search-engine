@@ -2,7 +2,6 @@ package de.intsys.krestel.SearchEngine;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Scanner;
 
 
 
@@ -55,9 +54,17 @@ public class Main {
 
 		//InvertedIndexer.buildIndex("LightDB.csv");
 
-		//InvertedIndexer.buildIndex("LightDB.csv");
+		//InvertedIndexer.buildIndex("LightDB.csv", "NoncompressedIndex.txt");
 
 
+		InvertedIndexer.buildCompressedIndex("LightDB.csv", "compressedIndex");
+
+		long startTime1 = System.currentTimeMillis();
+		//HuffmanEncoding.decode("compressedIndex.dico.key", "Decompressed.Dico.key");
+		System.out.println("elapsedTime::  decompress dico.key and write it: "+ (System.currentTimeMillis() - startTime1) );
+
+
+		/*
 		dictionary = InvertedIndexer.buildDict("index.txt");
 		//System.out.println(dictionary);
 		Scanner input = new Scanner(System.in);
@@ -76,7 +83,7 @@ public class Main {
 		}
 
 		input.close();
-
+		*/
 		System.out.println("Application stopped...");
 	}
 
