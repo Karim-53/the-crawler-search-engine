@@ -7,6 +7,7 @@ import java.util.*;
 
 //import com.google.guava;
 public class InvertedIndexer {
+	static ArrayList<Integer> articleIDList = new ArrayList<Integer>();
 	
 
 	private InvertedIndexer() {}
@@ -184,10 +185,11 @@ public class InvertedIndexer {
              while( (line = file.readLine()) !=null) {
             	 String[] part = line.split(Constants.CSV_SEPARATOR);
 
-            	 String text=part[5]+" "+part[4]; // i need the title first to have a better position later
+            	 String text=part[5]+""+part[4]; // i need the title first to have a better position later
 
             	 String[] textToIndex = text.trim().split(" ");
 				 int currentDocID = Integer.valueOf(part[0]);
+				 articleIDList.add(currentDocID);
 				 int wordPositionInTextToIndex=0;//position is 0-based but for no reason XD
 				 for(String word:textToIndex){
 					 //subIndex2 = new HashMap<>();
@@ -226,25 +228,17 @@ public class InvertedIndexer {
  	 * @param index
 	 * @param outputFileName
 	 */
+	/**change all to Treemap so that it gets sorted**/
 	static void writeIndexToFile( HashMap<String, Map<Integer, HashSet<Integer>>> index, String outputFileName){
 			 Map<Integer, HashSet<Integer>> subIndex2;
+
 			 try {
 				 FileWriter fIndex	 = new FileWriter(outputFileName);
 				 BufferedWriter OutIndex = new BufferedWriter(fIndex);
 
 				 for(String key:index.keySet()) {
-					 subIndex2=index.get(key);
-
-					 OutIndex.write(key + ": [");
-					 int n = subIndex2.size();
-					 int j=n-1;
-					 for(Integer key2:subIndex2.keySet()) {
-						 OutIndex.write("["+key2 +","+subIndex2.get(key2) + "]" );
-						 if(j>0) {
-							 OutIndex.write(",");
-						 }j--;
-					 }
-					 OutIndex.write("]");
+					 TreeMap<Integer, HashSet<Integer>> sorted = new TreeMap<>(index.get(key));
+					 OutIndex.write(key +":"+ sorted);
 					 OutIndex.newLine();
 
 				 }
@@ -303,8 +297,10 @@ public class InvertedIndexer {
 		 String[] text1 = null;
 		 
 		 try {
-				RandomAccessFile dicti = new RandomAccessFile("index.txt","r");
+			 System.out.println(query);
+				RandomAccessFile dicti = new RandomAccessFile("NoncompressedIndex.txt","r");
 				if(dictionary.get(query)!=null) {
+
 				//System.out.println(dictionary.get(query));
 				dicti.seek(dictionary.get(query));
 				text1 = dicti.readLine().split(":");}
@@ -321,8 +317,24 @@ public class InvertedIndexer {
 				e.printStackTrace();
 			}
 		 
-		 return text1[1]; 
+		 return text1[1];
 	 }
+	static List<Integer> getPostingList(String query, Map<String, Long> dictionary) {
+		String text=searchQuery(query,dictionary);
+		List<Integer> postingList = new ArrayList<>();
+		if(!text.equals(" No Match found")){
+
+		String[] tempPostingList =text.split("],"); //example govern:{38982=[50, 440], 38983=[133, 197, 86, 375, 347, 399], 38985=[176, 236]} splits at ], and in the below regex it replaces all values after =
+		//Convert from text to list posting list
+		for(String temp:tempPostingList) {
+			postingList.add(Integer.valueOf(temp.trim().replaceAll("(=.+)|(\\{)", "")));
+		}
+		System.out.println(postingList);
+
+		}
+		return postingList;
+
+	}
 	 
          
          }

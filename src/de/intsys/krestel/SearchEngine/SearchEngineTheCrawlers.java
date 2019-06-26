@@ -345,7 +345,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		long totBefore = 0L;
 			try {
 				br = new BufferedReader(new FileReader("offline.csv"));
-				br.readLine();//skip line 1
+				br.readLine();//skip line 1 // faiz: why skip first line?? In offline.csv, there is content in first line
 				int i=0;
 				while ((line = br.readLine()) != null) {
 					i++; 

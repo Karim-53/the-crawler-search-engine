@@ -2,6 +2,7 @@ package de.intsys.krestel.SearchEngine;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 
 
@@ -11,8 +12,8 @@ public class Main {
 		long startTime = System.currentTimeMillis();
 		long estimatedTime = System.currentTimeMillis();
 		Map<String, Long> dictionary = new HashMap<String, Long>();
-		String searchResult="";
-		String query="";
+		String searchResult = "";
+		String query = "";
 		Article.StopWords();
 
 		System.out.println("Application started...");
@@ -25,9 +26,6 @@ public class Main {
 		System.out.println(article.toString());
 		System.out.println(article.getNonUniqueTokens().length);
 		*/
-
-
-
 
 
 		//SearchEngineTheCrawlers.workOffline();
@@ -49,30 +47,34 @@ public class Main {
 		//int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", null);
 		//System.out.println("Total articles: " + total);
 
-		//SearchEngineTheCrawlers.workOffline();
+		//SearchEngineTheCrawlers.workOffline();//Step 1
 
 
 		//InvertedIndexer.buildIndex("LightDB.csv");
 
-		//InvertedIndexer.buildIndex("LightDB.csv", "NoncompressedIndex.txt");
+		//InvertedIndexer.buildIndex("LightDB.csv", "NoncompressedIndex.txt");//Step 2(this for non compressed index
 
 
-		InvertedIndexer.buildCompressedIndex("LightDB.csv", "compressedIndex");
+
+		//InvertedIndexer.buildCompressedIndex("LightDB.csv", "compressedIndex");
 
 		long startTime1 = System.currentTimeMillis();
 		//HuffmanEncoding.decode("compressedIndex.dico.key", "Decompressed.Dico.key");
-		System.out.println("elapsedTime::  decompress dico.key and write it: "+ (System.currentTimeMillis() - startTime1) );
+		//System.out.println("elapsedTime::  decompress dico.key and write it: "+ (System.currentTimeMillis() - startTime1) );
+		//System.out.println(InvertedIndexer.articleIDList);
 
 
-		/*
-		dictionary = InvertedIndexer.buildDict("index.txt");
-		//System.out.println(dictionary);
+
+		dictionary = InvertedIndexer.buildDict("NoncompressedIndex.txt");//step 3 for building dictionary.
+		/*System.out.println(dictionary);
 		Scanner input = new Scanner(System.in);
 		while_loop:
 		while(true) {
 			System.out.println("Input your query : ");
-			query=input.next();
+			query=input.nextLine();
+			System.out.println(query);
 			startTime = System.currentTimeMillis();
+			System.out.println(Article.TokenizeTitle(query));
 			query=Article.PorterStem(Article.TokenizeTitle(query));
 			if(query.contentEquals("stop123")) {
 				break while_loop;}
@@ -82,9 +84,27 @@ public class Main {
 
 		}
 
-		input.close();
-		*/
-		System.out.println("Application stopped...");
+
+		input.close();*/
+		//Boolean query result code
+
+		//System.out.println(Constants.docIDs);
+		//Testing for boolean query************************************************
+		Scanner input = new Scanner(System.in);
+		while_loop:
+		while (true) {
+			System.out.println("Input your query : ");
+			query = input.nextLine();
+			System.out.println(query);
+			if (query.contentEquals("stop123")) {
+				break while_loop;
+			}
+			searchResult = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(),dictionary);
+			System.out.println("Search Results " + searchResult);
+		}
+
+			System.out.println("Application stopped...");
+
 	}
 
 }
