@@ -42,9 +42,7 @@ public class kimHuffman implements Serializable  {
         compressedTxtSize = str01.length();
         return str01;
     }
-    static String readFile(String path)
-            throws IOException
-    {
+    static String readFile(String path) throws IOException {
         byte[] encoded = Files.readAllBytes(Paths.get(path));
         return new String(encoded);
     }

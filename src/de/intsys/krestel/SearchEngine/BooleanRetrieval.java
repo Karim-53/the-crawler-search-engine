@@ -1,12 +1,17 @@
 package de.intsys.krestel.SearchEngine;
 
 
+import javafx.util.Pair;
+
 import java.util.*;
 
 public class BooleanRetrieval {
 
-    static String searchBooleanQuery(String query, Map<String, Long> dictionary) {
+    static Pair< List<Article> , Set<String> > searchBooleanQuery(String query,  IdxDico idxDico) {
 
+        Map<String,Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
+
+        System.out.println("searchBooleanQuery");
         query = "(" + query + ")";
         query = query.replaceAll("(\\()", "\\( ");
         query = query.replaceAll("(\\))", " \\)");
@@ -16,10 +21,17 @@ public class BooleanRetrieval {
         Stack<String> operators = new Stack<String>();
         Stack<List<Integer>> operandPostingList = new Stack<>();
         //System.out.println(InvertedIndexer.articleIDList);
+        Set<String> setUniqueTokens = new HashSet<>(); // fo BM25
         try {
 
             for (String term : queryArray) {
-                if (!term.matches("AND|OR|NOT|INOT|(\\()|(\\))")) operandPostingList.push(InvertedIndexer.getPostingList(Article.PorterStem(term.toLowerCase()), dictionary)); //a
+                if (!term.matches("AND|OR|NOT|INOT|(\\()|(\\))")){
+                    String aToken = Article.PorterStem(Article.TokenizeTitle(term).toLowerCase());//FIXME kim: @ Faiz check if this is correct, do not just stem here but also you need to tokenize without deleting the ( )
+                    setUniqueTokens.add(aToken);
+
+
+                    operandPostingList.push(InvertedIndexer.getArticleIdsInPostingList(aToken, idxDico)); //a
+                }
                 else if(term.matches("AND|OR|NOT|INOT") && operators.isEmpty()) operators.push(term);//b
                 else if(term.matches("AND|OR|NOT|INOT")&& !operators.isEmpty() && (hasPrecedence(term)>hasPrecedence(operators.peek()))) operators.push(term);//c
                 else if (term.equals("(")) operators.push(term);//d
@@ -85,19 +97,25 @@ public class BooleanRetrieval {
 
             }
         } catch (EmptyStackException e) {
-            // TODO Auto-generated catch block
             System.out.println("Incorrect Syntax");
             e.printStackTrace();
-
         }
-        if (!operandPostingList.empty()) {
-            return Arrays.toString(operandPostingList.pop().toArray());
-        } else {
+        if (operandPostingList.empty()) {
             System.out.println("Incorrect syntax");
-
+            return null;
         }
-        return null;
+        Object[] oArticleIDs = operandPostingList.pop().toArray();
+        List<Integer> ArticleIDs = new ArrayList<>();
+        for (Object oArticleID:oArticleIDs) {ArticleIDs.add((Integer) oArticleID);}
 
+        System.out.println(ArticleIDs);
+        long startTime = System.currentTimeMillis();
+        List<Article> articles = Article.getLightArticlesFromID( ArticleIDs, idxDico);
+        //List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico); //TODO Show real title of the article
+        System.out.println("elapsedTime:: Article.getLightArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
+
+
+        return new Pair<>(  articles    ,   setUniqueTokens );
     }
     static Integer hasPrecedence(String operatorTerm){
         int precedence=5;
@@ -215,10 +233,6 @@ public class BooleanRetrieval {
         }
         return result;
     }
-
-
-
-
 
 }
 

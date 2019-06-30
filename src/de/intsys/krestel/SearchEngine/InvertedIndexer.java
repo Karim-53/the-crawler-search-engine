@@ -1,9 +1,13 @@
 package de.intsys.krestel.SearchEngine;
 
+import de.intsys.krestel.SearchEngine.hdt.Mutable;
 import de.intsys.krestel.SearchEngine.hdt.VByte;
+import javafx.util.Pair;
 
 import java.io.*;
 import java.util.*;
+
+import static jdk.nashorn.internal.ir.debug.ObjectSizeCalculator.getObjectSize;
 
 //import com.google.guava;
 public class InvertedIndexer {
@@ -21,49 +25,61 @@ public class InvertedIndexer {
 	 * @param outputFileName
 	 */
 	static void buildCompressedIndex(String inputFileName, String outputFileName) {
-		HashMap<String, Map<Integer, HashSet<Integer>>> indexInRAM = buildIndex(inputFileName);
+		Pair< HashMap<String, Map<Integer, HashSet<Integer>>> ,
+				Map<Integer, Pair<Integer, Integer>> > pair = buildIndex(inputFileName);
+
+		IdxDico oidxDico = IdxDico.LoadIdxDicoFromfile();// this should contain already articleId_To_HeavyArticlePos //= new IdxDico();
+		HashMap<String, Map<Integer, HashSet<Integer>>> indexInRAM = pair.getKey();
+		oidxDico.articleId_To_LightArticlePos = pair.getValue();
 
 		long startTime = System.currentTimeMillis();
+		System.out.println("mistreat:");
+		System.out.println(  indexInRAM.get("mistreat")   );
+		System.out.println("illumin:");
+		System.out.println(  indexInRAM.get("illumin")   );
 
-		Map<String, Long> idxDico = compressIndex(indexInRAM, outputFileName);
-
+		Map<String, Pair<Integer, Integer>> idxDico = compressIndex(indexInRAM, outputFileName);
+		//System.out.println("idxDico from ram:");
+		//System.out.println(idxDico);
 		System.out.println("elapsedTime:: compressIndex : "+ (System.currentTimeMillis() - startTime) );
 
-
-		//System.out.println( "idxDico size: " + getObjectSize(idxDico) );
+		oidxDico.tokenToPostingPos = idxDico;
+		oidxDico.writeThisToFile();
+		System.out.println( "idxDico size: " + getObjectSize(idxDico) );
 		//writestringOf01ToFile( indexInRAM, outputFileName);
 	}
 
 
-	static Map<String, Long> compressIndex(HashMap<String, Map<Integer, HashSet<Integer>>> index, String outputIndex_FileName) {
+	static Map<String, Pair<Integer, Integer>> compressIndex(HashMap<String, Map<Integer, HashSet<Integer>>> index, String outputIndex_FileName) {
 
-		Map<String, Long> tokenToPostingListPos_Dico = new HashMap<String, Long>();
+		Map<String, Pair<Integer, Integer>> tokenToPostingListPos_Dico = new HashMap<>();
 		//List<String> tokenToPostingListPos_Dico_keyList = new ArrayList<String>();
 		//List<Long> tokenToPostingListPos_Dico_valList = new ArrayList<Long>();
 		StringBuilder tokenToPostingListPos_Dico_keyList = new StringBuilder();
 
-
-		Long nextPostingList_StartPositionInFile = 0L;
+		int nextPostingList_StartPositionInFile = 0;
 		try (OutputStream outIndex = new BufferedOutputStream(new FileOutputStream(outputIndex_FileName+".Postings", false), 1024)) {
 			try (OutputStream outDicoVal = new BufferedOutputStream(new FileOutputStream(outputIndex_FileName+".dico.val", false), 1024)) {
 
 			// Loop on all posting lists
 		Iterator< Map.Entry<String, Map<Integer, HashSet<Integer>> > > PostingEntries = index.entrySet().iterator();
+		int lastDocID, lastPos;
 		while (PostingEntries.hasNext()) {
 			if (Math.random() < 0.0005) { System.out.print("."); }
 			Map.Entry<String, Map<Integer, HashSet<Integer>>> PostingEntry = PostingEntries.next();
 			String token = PostingEntry.getKey();
-			Map<Integer, HashSet<Integer>> onePostringList = PostingEntry.getValue();
+			if (token.length()<1) continue;
+			Map<Integer, HashSet<Integer>> onePostingList = PostingEntry.getValue();
 
 
 			//String token = "pretenc";
-			//Map<Integer, HashSet<Integer>> onePostringList = index.get(token);
-			//System.out.println(onePostringList);
-			SortedMap<Integer, HashSet<Integer>> onePostringListWithSortedDocID = getTreeMap(onePostringList);
+			//Map<Integer, HashSet<Integer>> onePostingList = index.get(token);
+			//System.out.println(onePostingList);
+			SortedMap<Integer, HashSet<Integer>> onePostringListWithSortedDocID = getTreeMap(onePostingList);
 			//System.out.println(onePostringListWithSortedDocID);
 
 			List<Integer> onePostringList_DeltaDocID_count_DeltaPos = new ArrayList<>();
-			int lastDocID = 0; //need to be re-init for each posting list
+			lastDocID = 0; //need to be re-init for each posting list
 			Iterator<Map.Entry<Integer, HashSet<Integer>>> entries = onePostringListWithSortedDocID.entrySet().iterator();
 			while (entries.hasNext()) {
 				// DocID: delta
@@ -78,7 +94,7 @@ public class InvertedIndexer {
 				Collections.sort(list);
 				onePostringList_DeltaDocID_count_DeltaPos.add(list.size());
 				//positions
-				int lastPos = 0;
+				lastPos = 0;
 				for (int currentPos : list) {
 					onePostringList_DeltaDocID_count_DeltaPos.add(currentPos - lastPos);
 					lastPos = currentPos;
@@ -89,21 +105,31 @@ public class InvertedIndexer {
 			// Applying V Byte encoding
 			// V Byte is not suitable to encode 1 and we have a lot of 1 (for now)
 			// after limiting the nb of tokens and eliminating rare words in a doc we will see XD
-			Long onePostingList_StartPositionInFile = nextPostingList_StartPositionInFile;
-			tokenToPostingListPos_Dico.put(token, onePostingList_StartPositionInFile);
-
+			int onePostingList_StartPositionInFile = nextPostingList_StartPositionInFile;
+			//System.out.println(token);
 			tokenToPostingListPos_Dico_keyList.append(token);
 			if (PostingEntries.hasNext()) {tokenToPostingListPos_Dico_keyList.append(Constants.CSV_SEPARATOR);}
 			//tokenToPostingListPos_Dico_valList.add(onePostingList_StartPositionInFile);
 			VByte.encode(outDicoVal, onePostingList_StartPositionInFile);
 
+			if (token.compareTo("mistreat")==0){
+				System.out.println("mistreat DeltaPos:");
+				System.out.println(onePostringList_DeltaDocID_count_DeltaPos);
+			}
+			if (token.compareTo("illumin")==0){
+				System.out.println("illumin DeltaPos:");
+				System.out.println(onePostringList_DeltaDocID_count_DeltaPos);
+			}
+
+
 			int bytesizeOfOnePostingList = 0;
 			for (int e : onePostringList_DeltaDocID_count_DeltaPos) {
 				bytesizeOfOnePostingList += VByte.encode(outIndex, e);
 			}
+			tokenToPostingListPos_Dico.put(token, new Pair<>(onePostingList_StartPositionInFile, bytesizeOfOnePostingList) );
 
-			Long onePostingList_EndPositionInFile = onePostingList_StartPositionInFile + bytesizeOfOnePostingList;
-			nextPostingList_StartPositionInFile = onePostingList_EndPositionInFile + 1;
+			int onePostingList_EndPositionInFile = onePostingList_StartPositionInFile + bytesizeOfOnePostingList;
+			nextPostingList_StartPositionInFile = onePostingList_EndPositionInFile;
 		}
 
 			System.out.println("stat::max val nextPostingList_StartPositionInFile "+nextPostingList_StartPositionInFile);
@@ -115,7 +141,7 @@ public class InvertedIndexer {
 			e.printStackTrace();
 		}
 
-		// tokenToPostingListPos_Dico  write to file this can be deleted to improve the compresion time
+		//TODO tokenToPostingListPos_Dico  write to file this can be deleted to improve the compresion time
 		String outputIndexDicoNonCompressed_FileName= outputIndex_FileName+".dico.NonCompressed_key";
 		long startTime = System.currentTimeMillis();
 		try (OutputStream outDicoKey = new BufferedOutputStream(new FileOutputStream(outputIndexDicoNonCompressed_FileName, false), 1024)) {
@@ -126,24 +152,14 @@ public class InvertedIndexer {
 		System.out.println("elapsedTime:: writing down dico keys non compressed : "+ (System.currentTimeMillis() - startTime) );
 
 
-		//TODO must be replaced by kimHuffman and the file write above
-		/*long startTime1 = System.currentTimeMillis();
-		HuffmanEncoding.encode(outputIndexDicoNonCompressed_FileName, outputIndex_FileName+".dico.key", 0);
-		System.out.println("elapsedTime::  bad huffman: "+ (System.currentTimeMillis() - startTime1) );
-*/
+		//you can use kimHuffman here
+		//kim huffman  (outputIndexDicoNonCompressed_FileName, outputIndex_FileName+".dico.key", 0);
+
 		System.out.println(outputIndex_FileName+".dico.key");
 
 
 		//FIXME check that none of the docID is 0
 		//FIXME later check that docID are as small as possible
-		//throw new RuntimeException("didn't finish yet");
-
-
-
-
-		//encode(String target, String destination, int n)
-
-
 
 		return tokenToPostingListPos_Dico;
 	}
@@ -160,7 +176,10 @@ public class InvertedIndexer {
 
 
 	static void buildIndex(String inputFileName, String outputFileName) {
-		HashMap<String, Map<Integer, HashSet<Integer>>> indexInRAM = buildIndex(inputFileName);
+		Pair< HashMap<String, Map<Integer, HashSet<Integer>>> ,
+				Map<Integer, Pair<Integer, Integer>> > pair = buildIndex(inputFileName);
+
+		HashMap<String, Map<Integer, HashSet<Integer>>> indexInRAM = pair.getKey();
 
 		long startTime = System.currentTimeMillis();
 		writeIndexToFile( indexInRAM, outputFileName);
@@ -173,21 +192,31 @@ public class InvertedIndexer {
 	 * @param inputFileName
 	 * @return index the index in the RAM
 	 */
-	static HashMap<String, Map<Integer, HashSet<Integer>>> buildIndex(String inputFileName){
+	static Pair< HashMap<String, Map<Integer, HashSet<Integer>>> ,
+			     Map<Integer, Pair<Integer, Integer>> >
+	buildIndex(String inputFileName){
+		 // for Index
 		 Map<Integer, HashSet<Integer>> subIndex;//[document id,[pos1,pos2,pos3]]
 		 Map<Integer, HashSet<Integer>> subIndex2;
-		 HashMap<String, Map<Integer, HashSet<Integer>>> index;//[word, subIndex]
-		 index = new HashMap<>();
+		 HashMap<String, Map<Integer, HashSet<Integer>>> index= new HashMap<>();//[word, subIndex]
+
+		 Map<Integer, Pair<Integer, Integer>> articleIdToPostingPos = new HashMap<>();
+		 int articleStartPos = 0;
 		 try(BufferedReader file = new BufferedReader(new FileReader(inputFileName)))
 		 {
-			 //int i = 0;//article number
              String line;
              while( (line = file.readLine()) !=null) {
             	 String[] part = line.split(Constants.CSV_SEPARATOR);
 
-            	 String text=part[5]+""+part[4]; // i need the title first to have a better position later
+				 articleIdToPostingPos.put(Integer.parseInt(part[0]) , new Pair<>(articleStartPos ,line.length() ));
+				 articleStartPos += line.length()+1; // \n char
+
+
+            	 String text=part[5]+" "+part[4]; // i need the title first to have a better position later
 
             	 String[] textToIndex = text.trim().split(" ");
+				 Article.totArticlesLength +=  textToIndex.length;
+				 Article.nbProcessedArticles ++ ;
 				 int currentDocID = Integer.valueOf(part[0]);
 				 articleIDList.add(currentDocID);
 				 int wordPositionInTextToIndex=0;//position is 0-based but for no reason XD
@@ -219,8 +248,11 @@ public class InvertedIndexer {
          } catch (IOException e){
              System.out.println("inputFileName "+inputFileName+" is maybe not found. but some err occured Skip it");
          }
-		 
-		 return index;
+
+        // for BM25
+		Article.saveStaticVar("%d", Article.totArticlesLength, "totArticlesLength" );
+		Article.saveStaticVar("%d", Article.nbProcessedArticles, "nbProcessedArticles" );
+		return new Pair<>(index, articleIdToPostingPos);
 		 }
 
 	/**
@@ -256,7 +288,9 @@ public class InvertedIndexer {
 		 }
 
 	 static Map<String, Long> buildDict(String fileName){
-		 
+		 Article.totArticlesLength  = Integer.valueOf(Article.readFileAsString("totArticlesLength"));// for BM25
+		 Article.nbProcessedArticles  = Integer.valueOf(Article.readFileAsString("nbProcessedArticles"));// for BM25
+
 		 Map<String, Long> dictionary = new HashMap<String, Long>();
 		 try {
 			RandomAccessFile dicti = new RandomAccessFile(fileName,"r");
@@ -292,7 +326,63 @@ public class InvertedIndexer {
 		 
 		 
 	 }
-	 
+
+
+	static public Map<Integer, List<Integer> >  getPostingList(String token, IdxDico idxDico){
+		System.out.println("getPostingList " + token);
+		//TODO Add Caching cause we call get multiple time on the same tokens
+		Map<String, Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
+
+		Pair<Integer, Integer> pair = dictionary.get(token);
+		return  loadOnePostingListFromCompressedIndex(pair.getKey(), pair.getValue());
+	}
+	static Map<Integer, List<Integer>> loadOnePostingListFromCompressedIndex(int start, int length) {
+		//System.out.println("start pos: " + start);
+		byte[] b=new byte[length] ;
+
+		try {//TODO OPEN File ONCE **********
+			RandomAccessFile dicti = new RandomAccessFile(Constants.ROOT_DIR+"compressedIndex.Postings","r");
+			dicti.seek(start);
+			dicti.read(b,0, length);
+			dicti.close();
+		} catch (IOException e) {
+			System.out.println("error in loadFromCompressedIndex");
+			e.printStackTrace();
+		}
+		List<Integer> decodedInt = new ArrayList();
+		Mutable<Integer> aInt = new Mutable<>(0);
+		for( int offset = 0; offset<length ; ){
+			offset += VByte.decode(b,  offset, aInt);
+			decodedInt.add(aInt.getValue());
+		}
+
+		Map<Integer, List<Integer>> postingList = new HashMap<>();
+
+		Iterator<Integer> decodedIntIterator = decodedInt.iterator();
+		int lastArticleID = 0;
+		while(decodedIntIterator.hasNext()){
+			int ArticleID = lastArticleID + decodedIntIterator.next();
+			int occurenceInArticle = decodedIntIterator.next();
+			List<Integer> positions = new ArrayList<>();
+			int LastPos = 0;
+			for(int i=0;i<occurenceInArticle;i++){
+				int curPos = LastPos + decodedIntIterator.next();
+				positions.add( curPos   ); //TODO Delta encoding
+				LastPos = curPos;
+			}
+			postingList.put(ArticleID, positions);
+			lastArticleID = ArticleID;
+		}
+
+		return postingList;
+	}
+
+	/**
+	 * for NoncompressedIndex.txt only (!) plz don t use it
+	 * @param query
+	 * @param dictionary
+	 * @return
+	 */
 	 static String searchQuery(String query, Map<String, Long> dictionary) {
 		 String[] text1 = null;
 		 
@@ -319,8 +409,18 @@ public class InvertedIndexer {
 		 
 		 return text1[1];
 	 }
-	static List<Integer> getPostingList(String query, Map<String, Long> dictionary) {
-		String text=searchQuery(query,dictionary);
+
+
+	static public List<Integer> getArticleIdsInPostingList(String aToken, IdxDico idxDico) {
+
+		Map<Integer, List<Integer> > postingList = InvertedIndexer.getPostingList(aToken, idxDico);
+		System.out.println("getArticleIdsInPostingList  "+aToken);
+		//System.out.println(postingList.keySet());
+		List<Integer> lista = new ArrayList<>( postingList.keySet() );
+		Collections.sort(lista);
+		return lista;
+
+/*		String text=searchQuery(query,dictionary);
 		List<Integer> postingList = new ArrayList<>();
 		if(!text.equals(" No Match found")){
 
@@ -333,9 +433,9 @@ public class InvertedIndexer {
 
 		}
 		return postingList;
-
+*/
 	}
-	 
+
          
          }
          

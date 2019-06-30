@@ -1,5 +1,42 @@
 package de.intsys.krestel.SearchEngine;
 /*
+
+List<Integer> foo = new ArrayList<>();
+        foo.add(38981);
+        Article.getHeavyArticlesFromID( foo, searchEngineTheCrawlers.idxDico);
+
+
+
+
+
+
+
+//System.out.println( Article.TokenizeTitle("pedro sánchez")  );
+
+//System.out.println(   InvertedIndexer.getPostingList("mistreat", searchEngineTheCrawlers.idxDico)   );
+//System.out.println(   InvertedIndexer.getPostingList("illumin", searchEngineTheCrawlers.idxDico)   );
+
+
+
+/*for(int i =38981 ; i <39021;i++ ) {
+			System.out.println(i);
+			List<Integer> foo = new ArrayList<Integer>();
+			foo.add(i);
+			Article.getLightArticlesFromID(foo, searchEngineTheCrawlers.idxDico.articleId_To_LightArticlePos);//
+		}//*/
+
+
+/*small test
+		 * Article article = new Article( 0, "","",Arrays.asList(";".split(Constants.LIST_SEPARATOR)),"aaaaa aaaaa bbbbbb","","",Arrays.asList(";".split(Constants.LIST_SEPARATOR)));
+
+		article.stemNTokenize();
+		Set<String> tok = article.getUniqueTokens();
+		System.out.println(tok.size());
+		System.out.println(article.toString());
+		System.out.println(article.getNonUniqueTokens().length);
+		*/
+
+/*
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Arrays;

@@ -1,32 +1,47 @@
 package de.intsys.krestel.SearchEngine;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.sun.istack.internal.Nullable;
-
+import javafx.util.Pair;
 import opennlp.tools.stemmer.PorterStemmer;
 
-import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Article {
-	static int totNbArticles;
-	static 
+	//static:            ------------------------------------------------------
+	public static int lastNonUsedArticleID;
+	public static long totArticlesLength;
+	public static int nbProcessedArticles;
+
+
+
+	static public long averageLengthPerArticle(){return (long) (totArticlesLength / nbProcessedArticles) ;}
+
+
+	public static HashSet<String> hs = new HashSet<String>();//stopwords list
+	static PorterStemmer stem1 = new PorterStemmer();
+
+	static
     {//https://ourcodeworld.com/articles/read/839/how-to-read-parse-from-and-write-to-ini-files-easily-in-java
-		totNbArticles = Integer.valueOf(readFileAsString("theCrawler_totNbArticles"));
+		lastNonUsedArticleID = Integer.valueOf(readFileAsString("lastNonUsedArticleID"));
+		totArticlesLength = Integer.valueOf(readFileAsString("totArticlesLength"));
+		nbProcessedArticles = Integer.valueOf(readFileAsString("nbProcessedArticles"));
+
+		int len= Constants.stopwords.length;//Article.StopWords(); you do not need this anymore it's loaded on start
+		for(int i=0;i<len;i++)
+		{
+			hs.add(Constants.stopwords[i]);
+		}
     }
 
-	static PorterStemmer stem1 = new PorterStemmer();
+	// Article attribute ------------------------------------------------------
 	public int nb;
 	public String uid;
 	public String url;
@@ -35,9 +50,9 @@ public class Article {
 	public String headline;
 	public String publication_timestamp;
 	public List<String> categories;
-	public static HashSet<String> hs = new HashSet<String>();//stopwords list
-	//Article article = new Article(article_nb,article_uid,article_url,article_authors,article_text,
-	// article_headline,publication_timestamp,article_categories);
+	public double score = 0.0; //
+
+
 	public Article() {
 		this(null);
 	}	
@@ -45,8 +60,8 @@ public class Article {
 		authors = new ArrayList<String>();
 		categories = new ArrayList<String>();
 		if (article_nb==null) {
-		nb = totNbArticles;
-		totNbArticles++;
+		nb = lastNonUsedArticleID;
+		lastNonUsedArticleID++;
 		}else {
 			nb = article_nb;
 		}
@@ -65,15 +80,108 @@ public class Article {
 		publication_timestamp=tokenizeMinimumChange(article_publication_timestamp);
 		categories = article_categories.stream()
                 .map(s -> tokenizeMinimumChange(s))
-                .collect(Collectors.toList());		
+                .collect(Collectors.toList());
+		score=0;
 	}
-	
+	public static Article ArticleFromLine(String line) {
+		String[] part = line.split(Constants.CSV_SEPARATOR);//   dicti.read(b,0, len);
+		return new Article(Integer.valueOf(part[0]), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)), part[4],
+				part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+	}
+	public static List<Article> getLightArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
+		return getArticlesFromID( articleIDs,  idxDico.articleId_To_LightArticlePos, "LightDB.csv");
+	}
+	public static List<Article> getHeavyArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
+		return getArticlesFromID( articleIDs,  idxDico.articleId_To_HeavyArticlePos, "offline.csv");
+	}
+		public static List<Article> getArticlesFromID(List<Integer> articleIDs, Map<Integer, Pair<Integer, Integer>> articleIdToFullArticlePos, String file) {
+		List<Article> lista = new ArrayList<>();
+		try {//TODO OPEN File ONCE for all queries **********
+			RandomAccessFile dicti = new RandomAccessFile(file,"r");
+
+			for(int articleID:articleIDs) {
+				Pair<Integer, Integer> pair = articleIdToFullArticlePos.get(articleID);
+				int start = pair.getKey();
+				//int len = pair.getValue();
+				System.out.println("seek start: "+start);
+				dicti.seek(start+1);
+
+				long startTime = System.currentTimeMillis();
+				String line = dicti.readLine();
+				//TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
+				//  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+
+				System.out.println(line);
+				lista.add( ArticleFromLine(line) );
+
+			}
+
+		dicti.close();
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+	}
+	public static List<Article> getHeavyArticlesFromID(List<Integer> articleIDs, Map<Integer, Pair<Integer, Integer>> articleIdToFullArticlePos) {
+		List<Article> lista = new ArrayList<>();
+		try {//TODO OPEN File ONCE for all queries **********
+			RandomAccessFile dicti = new RandomAccessFile("offline.csv","r");
+
+			for(int articleID:articleIDs) {
+				Pair<Integer, Integer> pair = articleIdToFullArticlePos.get(articleID);
+				int start = pair.getKey();
+				//int len = pair.getValue();
+
+				dicti.seek(start);
+
+				long startTime = System.currentTimeMillis();
+				String line = dicti.readLine();
+				//TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
+				//  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+
+				lista.add( ArticleFromLine(line) );
+
+			}
+
+			dicti.close();
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+	}
+	public static void PrettyPrintSearchResult(String query, List<Article> searchResult) {
+		System.out.println("Query: "+query);
+		String format = "%-8s%-12s%-70s%s\n";
+		System.out.println("==========================================================================================================================");
+		System.out.printf(format, "ID", "score", "title", "link");
+		System.out.println("==========================================================================================================================");
+
+		for (Article a:searchResult) {
+			System.out.printf(format, a.nb, round(a.score,5), a.headline, a.url);
+		}
+		System.out.println("============================================================================");
+	}
+	public static double round(double value, int places) {
+		if (places < 0) throw new IllegalArgumentException();
+
+		long factor = (long) Math.pow(10, places);
+		value = value * factor;
+		long tmp = Math.round(value);
+		return (double) tmp / factor;
+	}
 	private String encodeComma(String article_url) {
 		return article_url.replaceAll(",", "%2C");
 	}
 	public void stemNTokenize() {
 		text = PorterStem(TokenizeBody(text));
 		headline = PorterStem(TokenizeTitle(headline));
+		authors=authors.stream()
+				.map(s -> TokenizeTitle(s))
+				.collect(Collectors.toList());
+
+		categories = categories.stream()
+				.map(s -> TokenizeTitle(s))
+				.collect(Collectors.toList());
+
+
 		//FIXME wwwapplecom
 	}
 	public Set<String> getUniqueTokens() {
@@ -86,6 +194,10 @@ public class Article {
 		String[] parts = str.split(" ");
 		return parts;
 	}
+	public int numberOfNonUniqueTokens(){
+		return getNonUniqueTokens().length;
+	}
+
 	public static String PorterStem(String txt) { 
 		String[] tokens = txt.split(" ");
 		for (int i = 0; i < tokens.length; i++) {
@@ -161,17 +273,6 @@ public class Article {
 		return  txt.trim();
 	}
 	
-	public static void StopWords()
-	{
-	    int len= Constants.stopwords.length;
-	    for(int i=0;i<len;i++)
-	    {
-	        hs.add(Constants.stopwords[i]);
-	    }
-	   
-	}
-	
-
 	public String toString() {
 		StringBuilder s = new StringBuilder(); 
 		s.append(nb);
@@ -196,23 +297,51 @@ public class Article {
 	{ 
 		try {
 			String data = ""; 
-			data = new String(Files.readAllBytes(Paths.get(fileName))); 
+			data = new String(Files.readAllBytes(Paths.get(Constants.ROOT_DIR+fileName)));
 			return data;
 		}catch (Exception e){
+			System.out.println("file "+fileName+" not found");
 			return "1";
 		}
 	}
-	public static void savetotNbArticles() {
+
+	public static <T> void saveStaticVar(String pattern,T var, String FileName ) {
 		try {
-			FileWriter fileWriter = new FileWriter("theCrawler_totNbArticles", false); //overwrites file
-		    PrintWriter printWriter = new PrintWriter(fileWriter);
-		    //printWriter.print("Some String");
-		    printWriter.printf("%d",totNbArticles);
-		    printWriter.close();
+			FileWriter fileWriter = new FileWriter(Constants.ROOT_DIR+FileName, false); //overwrites file
+			PrintWriter printWriter = new PrintWriter(fileWriter);
+			printWriter.printf(pattern,var);
+			printWriter.close();
 		} catch (Exception e) {
 			System.err.format("IOException: %s%n", e);
 		}
-		
+
 	}
+	static int countOccurences(String str, String word) {
+		// split the string by spaces in a
+		String a[] = str.split(" ");
+
+		// search for pattern in a
+		int count = 0;
+		for (int i = 0; i < a.length; i++)
+		{
+			// if match found increase count
+			if (word.equals(a[i]))
+				count++;
+		}
+
+		return count;
+	}
+	public int countOfToken(String aUniqueToken) {
+		return countOccurences(this.headline + " " +this.text, aUniqueToken );
+	}
+
+	public static Comparator<Article> scoreComparatorDESC = new Comparator<Article>(){
+
+		@Override
+		public int compare(Article c1, Article c2) {
+			return (int) ( -10000.0*(c1.score - c2.score) ) ;
+		}
+	};
+
 }
 //FIXME add a method that goes through the crawled articles and chek if there is any duplicates

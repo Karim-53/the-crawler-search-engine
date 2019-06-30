@@ -1,60 +1,108 @@
 package de.intsys.krestel.SearchEngine;
 
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.sun.istack.internal.Nullable;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import de.intsys.krestel.SearchEngine.search.BM25;
+import javafx.util.Pair;
 
-import java.text.Normalizer;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.EOFException;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.regex.*;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class SearchEngineTheCrawlers extends SearchEngine {
 
 
 	static String stringMitChar = "";
 	static Set<String> tokens = new HashSet<String>();
-	
+
+	//Map<String, Pair<Integer, Integer>> dictionary = new HashMap<String, Pair<Integer, Integer>>(); // kim: maybe this should not be static but who cares -,-
+	IdxDico idxDico;
+
+
 	public SearchEngineTheCrawlers() {
 		super();// This should stay as is! Don't add anything here!
 	}
 
 	@Override
-	void index(String dir) {
-		// FIXME Auto-generated method stub
+	void index(String dir) { //FIXME use String dir here
+        //InvertedIndexer.buildIndex("LightDB.csv");
+
+        //InvertedIndexer.buildIndex("LightDB.csv", "NoncompressedIndex.txt");//Step 2(this for non compressed index
+
+
+
+        InvertedIndexer.buildCompressedIndex("LightDB.csv", Constants.ROOT_DIR+"compressedIndex");
+
+        //long startTime1 = System.currentTimeMillis();
+        //HuffmanEncoding.decode("compressedIndex.dico.key", "Decompressed.Dico.key");
+        //System.out.println("elapsedTime::  decompress dico.key and write it: "+ (System.currentTimeMillis() - startTime1) );
+        //System.out.println(InvertedIndexer.articleIDList);
 	}
 
 	@Override
-	boolean loadIndex(String directory) {
-		// FIXME Auto-generated method stub
-		return false;
+	boolean loadIndex(String directory) {// we do not load postings, we load the (token to pos) dico and the (id to article pos) dico
+		//dictionary = InvertedIndexer.buildDict("NoncompressedIndex.txt");//step 3 for building dictionary. //TODO This IS WRONG it builds not loads, write dico then read it X(
+
+
+		/*
+		String NonCompressed_key = Article.readFileAsString("compressedIndex.dico.NonCompressed_key");
+
+		try (InputStream inIndex_val = new BufferedInputStream(new FileInputStream(Constants.ROOT_DIR+"compressedIndex.dico.val"), 1024)){
+			VByte.decode(inIndex_val);
+
+		} catch (IOException e) {
+		e.printStackTrace();
+		}
+		*/
+
+		idxDico = IdxDico.LoadIdxDicoFromfile();
+		return true;
 	}
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
-		// FIXME Auto-generated method stub
+		query = Article.tokenizeMinimumChange(query);
+		System.out.println("tokenizeMinimumChange(query) = " + query);
+
+		// Case 1: if you are searching for 1 word:
+		/*
+		startTime = System.currentTimeMillis();
+		System.out.println(Article.TokenizeTitle(query));
+		query=Article.PorterStem(Article.TokenizeTitle(query));
+		if(query.contentEquals("stop123")) {
+			break while_loop;}
+		searchResult=InvertedIndexer.searchQuery(query.toLowerCase(), dictionary);
+		estimatedTime = System.currentTimeMillis() - startTime;
+		System.out.println("Search Results (" + estimatedTime + "ms) : " + searchResult);
+*/
+
+		//Case 2 : Bool Operator
+		// if Pattern has some AND OR =>  do a bool OP
+		if (Pattern.compile(".*\\b(AND|OR|NOT|INOT)\\b.*", Pattern.CASE_INSENSITIVE).matcher(query).matches()) {
+			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+			List<Article>  searchResult = result.getKey();
+			//Set<String> setUniqueTokens = result.getValue(); i don t need this here
+
+			//System.out.println("Search searchBooleanQuery Results " + searchResult);
+			//it is possible to rank boolean q if you want to
+			Article.PrettyPrintSearchResult(query,searchResult);
+			return null;
+		}else{
+			// Case 3: ranked search BM25
+			query = Article.TokenizeTitle( query.replaceAll(" ","_OR_").replaceAll("_", " ") );
+			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
+			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+			List<Article>  searchResult = result.getKey();
+			Set<String> setUniqueTokens = result.getValue();
+			for (Article a:searchResult) {
+				BM25.compute(idxDico, setUniqueTokens, a);
+			}
+			searchResult.sort(Article.scoreComparatorDESC);
+			Article.PrettyPrintSearchResult(query,searchResult);
+		}
 		return null;
 	}
 
@@ -67,6 +115,26 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	/**
 	 * Implement a Java method using the provided template that crawls the newspaper articles for a given date. The method should return a csv file
 	 */
+	void crawl(){
+	    /*
+		Calendar start = Calendar.getInstance();
+		start.set(2019, 04, 18);
+
+		Calendar end = Calendar.getInstance();
+		end.set(2019, 05, 01);
+
+		int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", start.getTime(),  end.getTime());*/
+
+		/*
+		Calendar calendar = Calendar.getInstance();
+		calendar.set(2019, 04, 03);
+		System.out.println(calendar.getTime());
+		int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", calendar.getTime());
+		*/
+        //int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", null);
+        //System.out.println("Total articles: " + total);
+
+    }
 	@Override
 	int crawlNewspaper(String newspaper, Date day) {
 		return crawlNewspaper(newspaper, day, day);
@@ -158,7 +226,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 				System.out.println(".");
 
 				csvWriter1.flush();
-				Article.savetotNbArticles();
+				Article.saveStaticVar("%d",Article.lastNonUsedArticleID,"lastNonUsedArticleID"  );
 
 
 				System.out.println("################");
@@ -316,6 +384,9 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		csvWriter1.append("\n");
 	}
 
+    /**
+     * transform raw articles to LightDB.csv
+     */
 	static void workOffline() {
 		FileWriter fTokenSize;
 		FileWriter fNonUniqueTokenSize;
@@ -332,7 +403,6 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			outNonUniqueTokenSize = new BufferedWriter(fNonUniqueTokenSize);
 
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 			return;
 		}
@@ -343,13 +413,21 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		long totTokens = 0L;
 		long totAfter = 0L;
 		long totBefore = 0L;
-			try {
-				br = new BufferedReader(new FileReader("offline.csv"));
-				br.readLine();//skip line 1 // faiz: why skip first line?? In offline.csv, there is content in first line
+
+		Map<Integer, Pair<Integer, Integer>> articleIdToHeavyArticlePos = new HashMap<>(); // for idxDico
+		int articleStartPos = 0;
+
+		try {
+				FileReader fr = new FileReader("offline.csv");
+				br = new BufferedReader(fr);
+				//String Encoding = fr.getEncoding();
+				//br.readLine();//skip line 1 // faiz: why skip first line?? In offline.csv, there is content in first line // kim , you are right, it was headerline, now it is deleted
 				int i=0;
+				//Pair<String, int> pair = brReadLine(br);
 				while ((line = br.readLine()) != null) {
-					i++; 
-					if (i%500==1) {System.out.print(".");}
+					if ((i++) %400==1) {System.out.print(".");}
+
+
 					String[] part = line.split(Constants.CSV_SEPARATOR);
 					if ("article id"==part[0]) {continue;}
 					int nb = 0;
@@ -359,12 +437,25 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 						System.out.println(part[0]);
 						System.out.println(e);
 					}
+
+					int lineLen = line.getBytes().length;
+					articleIdToHeavyArticlePos.put( nb , new Pair<>(articleStartPos ,lineLen));
+					articleStartPos += lineLen+ 1; // \n char
+
+
+
+
 					Article article = new Article( new Integer( nb ), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)),part[4],
 							part[5],part[6],Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
 					totBefore +=  article.text.length() +article.headline.length();
 					article.stemNTokenize();
 					totAfter +=  article.text.length() +article.headline.length();
-					
+
+					/*if (nb==39016){
+						System.out.println(article.authors);
+						System.out.println(article);
+					}*/
+
 					tokens.addAll(article.getUniqueTokens());
 					log(""+tokens.size(), outTokenSize);
 					totTokens += article.getNonUniqueTokens().length;
@@ -375,6 +466,10 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			} catch (IOException e) {
 				e.printStackTrace();
 			} finally {
+				IdxDico idxDico = new IdxDico();
+				idxDico.articleId_To_HeavyArticlePos = articleIdToHeavyArticlePos;
+				idxDico.writeThisToFile();
+
 				System.out.println(totBefore);
 				System.out.println(totAfter);
 				if (br != null) {
@@ -400,6 +495,12 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		log(tokens.toString(), "tokens.txt");
 
 	}
+
+	private static Pair<String,Integer> brReadLine(BufferedReader br) {
+		//while(br.read()) this return int, maybe from it you can get the real size of the char maybe...
+		return null;
+	}
+
 	synchronized static void log(String line, String FilePath) {
 
 		try {

@@ -49,10 +49,9 @@ public class VByte {
     private VByte() {}
 
     public static int encode(OutputStream out, long value) throws IOException {
-        int nbByteUsed = 0;
-        if(value<0) {
-            throw new IllegalArgumentException("Only can encode VByte of positive values");
-        }
+        if(value<0) {throw new IllegalArgumentException("Only can encode VByte of positive values");}
+
+        int nbByteUsed = 1;
         while( value > 127) {
             out.write((int)(value & 127));
             value>>>=7;
@@ -120,8 +119,8 @@ public class VByte {
         return i;
     }
 
-    public static int decode(byte[] data, int offset, Mutable<Long> value) {
-        long out = 0;
+    public static int decode(byte[] data, int offset, Mutable<Integer> value) {
+        int out = 0;
         int i=0;
         int shift=0;
         while( (0x80 & data[offset+i])==0) {
