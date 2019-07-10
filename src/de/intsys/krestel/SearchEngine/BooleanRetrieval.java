@@ -11,7 +11,7 @@ public class BooleanRetrieval {
 
         Map<String,Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
 
-        System.out.println("searchBooleanQuery");
+        //System.out.println("searchBooleanQuery");
         query = "(" + query + ")";
         query = query.replaceAll("(\\()", "\\( ");
         query = query.replaceAll("(\\))", " \\)");
@@ -54,7 +54,7 @@ public class BooleanRetrieval {
                             else if (operator1.equals("INOT")) operand1PostingList = notQuery(operand1PostingList);
                             operator1 = operators.pop();
                             operandPostingList.push(operand1PostingList);
-                            System.out.println("Intermediate Result : " + operand1PostingList);
+                            //System.out.println("Intermediate Result : " + operand1PostingList);
                         } else {
                             System.out.println("Incorrect syntax");
                             break;
@@ -83,7 +83,7 @@ public class BooleanRetrieval {
                         else if (operator1.equals("INOT")) operand1PostingList = notQuery(operand1PostingList);
                         //operator1 = operators.pop();
                         operandPostingList.push(operand1PostingList);
-                        System.out.println("Intermediate Result : " + operand1PostingList);
+                        //System.out.println("Intermediate Result : " + operand1PostingList);
                     } else {
                         System.out.println("Incorrect syntax");
                         break;
@@ -102,17 +102,17 @@ public class BooleanRetrieval {
         }
         if (operandPostingList.empty()) {
             System.out.println("Incorrect syntax");
-            return null;
+            return new Pair<>(new ArrayList<>(),new HashSet<>());
         }
         Object[] oArticleIDs = operandPostingList.pop().toArray();
         List<Integer> ArticleIDs = new ArrayList<>();
         for (Object oArticleID:oArticleIDs) {ArticleIDs.add((Integer) oArticleID);}
 
-        System.out.println(ArticleIDs);
+        //System.out.println(ArticleIDs);
         long startTime = System.currentTimeMillis();
-        List<Article> articles = Article.getLightArticlesFromID( ArticleIDs, idxDico);
+        List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
         //List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico); //TODO Show real title of the article
-        System.out.println("elapsedTime:: Article.getLightArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
+        //System.out.println("elapsedTime:: Article.getLightArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
 
 
         return new Pair<>(  articles    ,   setUniqueTokens );

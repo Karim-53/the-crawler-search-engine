@@ -35,6 +35,8 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 
         InvertedIndexer.buildCompressedIndex("LightDB.csv", Constants.ROOT_DIR+"compressedIndex");
+		InvertedIndexer.createDictOfflinecsv("offline.csv"); ////dictionary for offline.csv. should be run with searchEngineTheCrawlers.index method
+		//InvertedIndexer.createDictOfflinecsv1("offline.csv"); faster but still have doubts
 
         //long startTime1 = System.currentTimeMillis();
         //HuffmanEncoding.decode("compressedIndex.dico.key", "Decompressed.Dico.key");
@@ -64,8 +66,14 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
+		long startTime1 = System.currentTimeMillis();
+		query = query.replaceAll("\\bUS\\b","USA");
+		if (query.matches("\".*?\"")){
+			query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
+		}
+
 		query = Article.tokenizeMinimumChange(query);
-		System.out.println("tokenizeMinimumChange(query) = " + query);
+		//System.out.println("tokenizeMinimumChange(query) = " + query);
 
 		// Case 1: if you are searching for 1 word:
 		/*
@@ -84,24 +92,26 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		if (Pattern.compile(".*\\b(AND|OR|NOT|INOT)\\b.*", Pattern.CASE_INSENSITIVE).matcher(query).matches()) {
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
 			List<Article>  searchResult = result.getKey();
-			//Set<String> setUniqueTokens = result.getValue(); i don t need this here
+			Set<String> setUniqueTokens = result.getValue(); //i don t need this here
 
 			//System.out.println("Search searchBooleanQuery Results " + searchResult);
 			//it is possible to rank boolean q if you want to
-			Article.PrettyPrintSearchResult(query,searchResult);
+			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
 			return null;
 		}else{
 			// Case 3: ranked search BM25
 			query = Article.TokenizeTitle( query.replaceAll(" ","_OR_").replaceAll("_", " ") );
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+			//System.out.println(result);
 			List<Article>  searchResult = result.getKey();
+//			System.out.println(searchResult);
 			Set<String> setUniqueTokens = result.getValue();
 			for (Article a:searchResult) {
 				BM25.compute(idxDico, setUniqueTokens, a);
 			}
 			searchResult.sort(Article.scoreComparatorDESC);
-			Article.PrettyPrintSearchResult(query,searchResult);
+			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
 		}
 		return null;
 	}
@@ -467,6 +477,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 				e.printStackTrace();
 			} finally {
 				IdxDico idxDico = new IdxDico();
+
 				idxDico.articleId_To_HeavyArticlePos = articleIdToHeavyArticlePos;
 				idxDico.writeThisToFile();
 

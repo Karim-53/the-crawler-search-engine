@@ -4,14 +4,15 @@ import com.sun.istack.internal.Nullable;
 import javafx.util.Pair;
 import opennlp.tools.stemmer.PorterStemmer;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Article {
@@ -19,6 +20,7 @@ public class Article {
 	public static int lastNonUsedArticleID;
 	public static long totArticlesLength;
 	public static int nbProcessedArticles;
+	private static final Pattern endOfSentence = Pattern.compile("\\.\\s+");
 
 
 
@@ -92,8 +94,41 @@ public class Article {
 		return getArticlesFromID( articleIDs,  idxDico.articleId_To_LightArticlePos, "LightDB.csv");
 	}
 	public static List<Article> getHeavyArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
-		return getArticlesFromID( articleIDs,  idxDico.articleId_To_HeavyArticlePos, "offline.csv");
+		return getHeavyArticlesFromIDOffline( articleIDs,  idxDico.offlineArticleID_position, "offline.csv");
 	}
+
+	public static List<Article> getHeavyArticlesFromIDOffline(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){
+        List<Article> lista = new ArrayList<>();
+        try {//TODO OPEN File ONCE for all queries **********
+            RandomAccessFile dicti = new RandomAccessFile(file,"r");
+			//long startTime = System.currentTimeMillis();
+			String line;
+
+            for(int articleID:articleIDs) {
+                Long start = offlineArticleID_position.get(articleID);
+				dicti.seek(start);
+                //int len = pair.getValue();
+                //System.out.println("seek start: "+start);
+				if (offlineArticleID_position.get(articleID+1)!=null){
+				byte[] bytes = new byte[(int) (offlineArticleID_position.get(articleID+1)-start)];
+				dicti.read(bytes);
+				line =new String(bytes);}
+				else {
+				line = dicti.readLine();
+				}
+                //TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
+                //  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+                //System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+                lista.add( ArticleFromLine(line) );
+
+            }
+
+            dicti.close();
+        } catch (IOException e) {e.printStackTrace();}
+        return lista;
+
+    }
+
 		public static List<Article> getArticlesFromID(List<Integer> articleIDs, Map<Integer, Pair<Integer, Integer>> articleIdToFullArticlePos, String file) {
 		List<Article> lista = new ArrayList<>();
 		try {//TODO OPEN File ONCE for all queries **********
@@ -147,17 +182,100 @@ public class Article {
 		} catch (IOException e) {e.printStackTrace();}
 		return lista;
 	}
-	public static void PrettyPrintSearchResult(String query, List<Article> searchResult) {
-		System.out.println("Query: "+query);
-		String format = "%-8s%-12s%-70s%s\n";
+	public static void PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
+		//System.out.println("Query: "+query);
+        System.out.println("==========================================================================================================================");
+        System.out.println("Search Results");
+		System.out.println("About " +searchResult.size()+ " Results" +"("+(System.currentTimeMillis()-startTime1)+ " ms)");
+        //System.out.println("==========================================================================================================================");
+		/*String format = "%-8s%-12s%-70s%s%s\n";
 		System.out.println("==========================================================================================================================");
-		System.out.printf(format, "ID", "score", "title", "link");
+		System.out.printf(format, "ID", "score", "title", "link","text");
 		System.out.println("==========================================================================================================================");
 
 		for (Article a:searchResult) {
-			System.out.printf(format, a.nb, round(a.score,5), a.headline, a.url);
+			System.out.printf(format, a.nb, round(a.score,5), a.headline, a.url,Summary(a.text,setUniqueTokens));
 		}
-		System.out.println("============================================================================");
+		System.out.println("============================================================================");*/
+		int resultno=1;
+
+		for (Article a:searchResult){
+			System.out.println(resultno + "=========================================================================================================================");
+			//System.out.println(round(a.score,5));
+			DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
+			ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
+
+			//Instant instant=Instant.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""));for time in nano
+
+
+			System.out.println(TokenizeTitle(a.headline) +"-"+ a.authors.toString() +"-"+zdt.toLocalDate() +" " + zdt.toLocalTime());
+            //System.out.println(a.headline.replaceAll("(\")|(\")", "").trim());
+            System.out.println(a.url.replaceAll("(\")|(\")", "").trim());
+
+            List<String> description =Summary(a.text,setUniqueTokens);
+            int i=0;
+            while (i<description.size()){//select random items from the list to print.. print only 5
+                System.out.println(description.get(i));
+                i++;
+                if(i==5){
+                    break;
+                }
+            }
+
+            //System.out.println("==========================================================================================================================");
+			topK--;
+            if (topK==0){
+            	break;
+			}
+
+            resultno++;
+
+
+        }
+		if(resultno==1){
+			System.out.println("No results Found");
+			System.out.println("==========================================================================================================================");
+		}
+	}
+
+	public static List Summary(String text,Set<String> setUniqueTokens){// can be used for offline.csv
+		List<String> sentences= new ArrayList<>();
+		if(setUniqueTokens.contains("")){// if the query contains stop words, the set has "". so have to remove that.
+			setUniqueTokens.remove("");
+		}
+		for(String a:setUniqueTokens){
+			for (String sentence:endOfSentence.split(text)){
+				String sentence1=TokenizeBody(sentence);
+				if(PorterStem(TokenizeBody(sentence1)).contains(a)){
+					String[] sentenceinArray =sentence1.split(" +");
+					int sentenceLength=sentenceinArray.length;
+
+					for(int i=0;i<sentenceLength;i++){
+						if (PorterStem(sentenceinArray[i]).equals(a)){
+							String wordsAround= "...." + (i-4>-1 ? sentenceinArray[i-4] +" " : "") +
+									(i-3>-1 ? sentenceinArray[i-3] +" " : "") +
+									(i-2>-1 ? sentenceinArray[i-2] +" " : "") +
+									(i-1>-1 ? sentenceinArray[i-1] +" " : "") +
+									sentenceinArray[i] + " "+
+									(i+1<sentenceLength ? sentenceinArray[i+1] +" " : "") +
+									(i+2<sentenceLength ? sentenceinArray[i+2] +" " : "") +
+									(i+3<sentenceLength ? sentenceinArray[i+3] +" " : "") +
+									(i+4<sentenceLength ? sentenceinArray[i+4] +" " : "") +
+									"......";
+							sentences.add(wordsAround);
+						}
+					}
+
+				}
+			}
+
+
+		}
+		Collections.shuffle(sentences);
+		return sentences;
+
+
+
 	}
 	public static double round(double value, int places) {
 		if (places < 0) throw new IllegalArgumentException();
@@ -217,7 +335,7 @@ public class Article {
 	 * @return Tokenized txt for crawling and storing
 	 */
 	public static String tokenizeMinimumChange(String txt) {
-		txt = txt.replaceAll("\u0000", "")
+		txt = txt.replaceAll("\u0000", "")//.replaceAll("\\bUS\\b","USA")//no use since the offline.csv is in lowercase
 				.toLowerCase()
 				.replaceAll("\\s", " ")
 				.replaceAll("[\\v]", " ")	//vertical spaces (newline)
@@ -231,7 +349,7 @@ public class Article {
 		return txt;
 	}
 	public static String TokenizeBody(String txt) {
-		txt = txt.replaceAll("(\\d)", "")
+		txt = txt.replaceAll(" (\\d) ", "")
 				.replaceAll("(\\.)", "");
 		return TokenizeTitle(txt);
 	}

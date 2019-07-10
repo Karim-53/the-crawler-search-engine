@@ -10,6 +10,8 @@ public class IdxDico implements Serializable {
 
     Map<Integer, Pair<Integer, Integer>> articleId_To_LightArticlePos;
     Map<Integer, Pair<Integer, Integer>> articleId_To_HeavyArticlePos;
+    Map<Integer,Long> offlineArticleID_position;
+    Map<Integer,Long> offlineArticleID_position1;
 
 
     public static IdxDico LoadIdxDicoFromfile(){
@@ -20,6 +22,7 @@ public class IdxDico implements Serializable {
                     = new ObjectInputStream(fileInputStream);
             IdxDico idxDico = (IdxDico) objectInputStream.readObject();
             objectInputStream.close();
+
 
             return idxDico;
 
