@@ -4,11 +4,13 @@ import com.sun.istack.internal.Nullable;
 import javafx.util.Pair;
 import opennlp.tools.stemmer.PorterStemmer;
 
-import java.io.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -87,8 +89,10 @@ public class Article {
 	}
 	public static Article ArticleFromLine(String line) {
 		String[] part = line.split(Constants.CSV_SEPARATOR);//   dicti.read(b,0, len);
-		return new Article(Integer.valueOf(part[0]), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)), part[4],
-				part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+		//return new Article(Integer.valueOf(part[0]), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)), part[4],
+		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+		return new Article(Integer.valueOf(part[0]), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
+				part[4], part[5], Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
 	}
 	public static List<Article> getLightArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
 		return getArticlesFromID( articleIDs,  idxDico.articleId_To_LightArticlePos, "LightDB.csv");
@@ -200,7 +204,7 @@ public class Article {
 		int resultno=1;
 
 		for (Article a:searchResult){
-			System.out.println(resultno + "=========================================================================================================================");
+			System.out.println("\n"+ resultno );
 			//System.out.println(round(a.score,5));
 			DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
 			ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
@@ -208,18 +212,17 @@ public class Article {
 			//Instant instant=Instant.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""));for time in nano
 
 
-			System.out.println(TokenizeTitle(a.headline) +"-"+ a.authors.toString() +"-"+zdt.toLocalDate() +" " + zdt.toLocalTime());
+			System.out.println("Title:\t\t"+a.headline +"\nAuthors(s):\t"+ String.join(", ", a.authors) +"  -  "+zdt.toLocalDate() +" " + zdt.toLocalTime());
             //System.out.println(a.headline.replaceAll("(\")|(\")", "").trim());
             System.out.println(a.url.replaceAll("(\")|(\")", "").trim());
 
             List<String> description =Summary(a.text,setUniqueTokens);
-            int i=0;
-            while (i<description.size()){//select random items from the list to print.. print only 5
-                System.out.println(description.get(i));
-                i++;
-                if(i==5){
-                    break;
-                }
+
+			Random rand = new Random();
+			for (int i=0; 0<description.size() && i<5; i++){//select random items from the list to print.. print only 5
+				int next = rand.nextInt(description.size());
+				System.out.println(description.get(next));
+				description.remove(next);
             }
 
             //System.out.println("==========================================================================================================================");
@@ -243,16 +246,16 @@ public class Article {
 		if(setUniqueTokens.contains("")){// if the query contains stop words, the set has "". so have to remove that.
 			setUniqueTokens.remove("");
 		}
-		for(String a:setUniqueTokens){
-			for (String sentence:endOfSentence.split(text)){
-				String sentence1=TokenizeBody(sentence);
+		for (String sentence:endOfSentence.split(text)){
+			String sentence1=TokenizeBody(sentence);
+			for(String a:setUniqueTokens){
 				if(PorterStem(TokenizeBody(sentence1)).contains(a)){
 					String[] sentenceinArray =sentence1.split(" +");
 					int sentenceLength=sentenceinArray.length;
 
 					for(int i=0;i<sentenceLength;i++){
 						if (PorterStem(sentenceinArray[i]).equals(a)){
-							String wordsAround= "...." + (i-4>-1 ? sentenceinArray[i-4] +" " : "") +
+							String wordsAround= "..." + (i-4>-1 ? sentenceinArray[i-4] +" " : "") +
 									(i-3>-1 ? sentenceinArray[i-3] +" " : "") +
 									(i-2>-1 ? sentenceinArray[i-2] +" " : "") +
 									(i-1>-1 ? sentenceinArray[i-1] +" " : "") +
@@ -261,11 +264,12 @@ public class Article {
 									(i+2<sentenceLength ? sentenceinArray[i+2] +" " : "") +
 									(i+3<sentenceLength ? sentenceinArray[i+3] +" " : "") +
 									(i+4<sentenceLength ? sentenceinArray[i+4] +" " : "") +
-									"......";
+									"...";
 							sentences.add(wordsAround);
+							i+=Math.min(4,sentenceLength);
 						}
 					}
-
+				break;
 				}
 			}
 
@@ -285,6 +289,23 @@ public class Article {
 		long tmp = Math.round(value);
 		return (double) tmp / factor;
 	}
+
+	public static List<Article> PhraseQuery(List<Article> searchResult, String exactquery) {
+		List<Article> lista = new ArrayList<>();
+		for (Article a:searchResult) {
+			if (a.text.indexOf(exactquery)>=0) {
+				lista.add(a);
+				//if (lista.size()>=10) {break;}
+			}
+		}
+		if (lista.size()==0){
+			System.out.println("no exact exp found :(");
+			return searchResult;
+		}
+		return lista;
+		// todo change the tokens to hilight later
+	}
+
 	private String encodeComma(String article_url) {
 		return article_url.replaceAll(",", "%2C");
 	}
@@ -335,8 +356,10 @@ public class Article {
 	 * @return Tokenized txt for crawling and storing
 	 */
 	public static String tokenizeMinimumChange(String txt) {
-		txt = txt.replaceAll("\u0000", "")//.replaceAll("\\bUS\\b","USA")//no use since the offline.csv is in lowercase
+		txt = txt.replaceAll("\u0000", "")
+				.replaceAll("\\bUS\\b","USA")//no use since the offline.csv is in lowercase; Is it fixed now ?
 				.toLowerCase()
+				.replaceAll("http.*?\\s", " ")
 				.replaceAll("\\s", " ")
 				.replaceAll("[\\v]", " ")	//vertical spaces (newline)
 				.trim().replaceAll(" +", " ");
@@ -394,8 +417,8 @@ public class Article {
 	public String toString() {
 		StringBuilder s = new StringBuilder(); 
 		s.append(nb);
-		s.append(", ");
-		s.append(uid);
+		//s.append(", ");
+		//s.append(uid);
 		s.append(", ");
 		s.append(url);
 		s.append(", ");

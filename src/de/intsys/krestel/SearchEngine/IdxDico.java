@@ -9,7 +9,7 @@ public class IdxDico implements Serializable {
     Map<String, Pair<Integer, Integer>> tokenToPostingPos ;
 
     Map<Integer, Pair<Integer, Integer>> articleId_To_LightArticlePos;
-    Map<Integer, Pair<Integer, Integer>> articleId_To_HeavyArticlePos;
+    Map<Integer, Pair<Integer, Integer>> articleId_To_HeavyArticlePos;//TODO del this cause now we have offlineArticleID_position
     Map<Integer,Long> offlineArticleID_position;
     Map<Integer,Long> offlineArticleID_position1;
 

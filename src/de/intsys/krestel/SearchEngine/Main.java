@@ -1,44 +1,30 @@
 package de.intsys.krestel.SearchEngine;
 
-import java.util.Scanner;
-
 public class Main {
 
 	public static void main(String[] args) {
-		//long startTime1 = System.currentTimeMillis();
-		long estimatedTime = System.currentTimeMillis();
-
-		String query = "Trump AND Putin";
+		//long estimatedTime = System.currentTimeMillis();
 
 		//System.out.println("==============Crawlers Search Engine================");
 		SearchEngineTheCrawlers searchEngineTheCrawlers = new SearchEngineTheCrawlers();
 
-		//SearchEngineTheCrawlers.crawl(); // Step 0
-
-
-		//SearchEngineTheCrawlers.workOffline();//Step 1
-
+		//searchEngineTheCrawlers.crawl(); // Step 1
 
 		//searchEngineTheCrawlers.index(null);//Step 2
+
 		//System.out.println(Constants.ROOT_DIR+"idxDico");
 
 		searchEngineTheCrawlers.loadIndex(null);//Step 3
 
-
-
-
 		//Step 4 : query
-		//searchEngineTheCrawlers.search(query,10,0);
+		String query = "\"make America great again\""; //"\"make America great again\""; //"Trump AND Putin";
+		searchEngineTheCrawlers.search(query,10,0);
 		//searchEngineTheCrawlers.search("Trump Putin",10,0);
 
 		//searchEngineTheCrawlers.search("Germany",10,0);
 		//searchEngineTheCrawlers.search("Tropical fish",10,0);
 		//searchEngineTheCrawlers.search("g20",10,0);
-
-
-
-
-
+/*
 		Scanner input = new Scanner(System.in);
 		while_loop:
 		while (true) {
@@ -54,7 +40,7 @@ public class Main {
 			}
 			searchEngineTheCrawlers.search(query,10,0);
 		}
-
+*/
 		System.out.println("Application stopped...");
 
 

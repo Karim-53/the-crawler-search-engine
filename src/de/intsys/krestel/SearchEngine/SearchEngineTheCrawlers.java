@@ -34,7 +34,9 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 
 
-        InvertedIndexer.buildCompressedIndex("LightDB.csv", Constants.ROOT_DIR+"compressedIndex");
+		HashMap<String, Map<Integer, Integer>> preIndex = SearchEngineTheCrawlers.workOffline();//Step 1
+
+        InvertedIndexer.buildCompressedIndex(preIndex, "LightDB.csv", Constants.ROOT_DIR+"compressedIndex");
 		InvertedIndexer.createDictOfflinecsv("offline.csv"); ////dictionary for offline.csv. should be run with searchEngineTheCrawlers.index method
 		//InvertedIndexer.createDictOfflinecsv1("offline.csv"); faster but still have doubts
 
@@ -67,8 +69,13 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
 		long startTime1 = System.currentTimeMillis();
-		query = query.replaceAll("\\bUS\\b","USA");
+		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
+		boolean IsPhraseQuery = false;
+		String exactquery = query;
 		if (query.matches("\".*?\"")){
+			System.out.println("Phrase Queries");
+			IsPhraseQuery = true;
+			exactquery = query.substring(1, query.length()-1);
 			query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
 		}
 
@@ -94,8 +101,15 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			List<Article>  searchResult = result.getKey();
 			Set<String> setUniqueTokens = result.getValue(); //i don t need this here
 
-			//System.out.println("Search searchBooleanQuery Results " + searchResult);
-			//it is possible to rank boolean q if you want to
+			//rank
+			for (Article a:searchResult) {
+				BM25.compute(idxDico, setUniqueTokens, a);
+			}
+			searchResult.sort(Article.scoreComparatorDESC);
+			if (IsPhraseQuery){
+				searchResult = Article.PhraseQuery(searchResult, exactquery);
+			}
+			//print
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
 			return null;
 		}else{
@@ -126,6 +140,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	 * Implement a Java method using the provided template that crawls the newspaper articles for a given date. The method should return a csv file
 	 */
 	void crawl(){
+		this.CrawlTheWeb();
 	    /*
 		Calendar start = Calendar.getInstance();
 		start.set(2019, 04, 18);
@@ -150,12 +165,12 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		return crawlNewspaper(newspaper, day, day);
 	}
 
-	int crawlNewspaper(String newspaper, Date start_day, Date end_end) {
+	int crawlNewspaper(String newspaper, Date start_day, Date end_day) {
 		if (newspaper.compareTo("The Guardian")!=0){//If both the strings are equal then this method returns 0
 			System.out.println("this works only for The Guardian");
 			return 0;
 		}
-		System.out.println("From "+ start_day + " to "+ end_end);
+		System.out.println("From "+ start_day + " to "+ end_day);
 		
 		String rootUrl = Constants.GUARDIAN_QUERY_WORLD;
 
@@ -165,7 +180,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		}else {//crawl for a specific day
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 			String start_date = sdf.format(start_day);
-			String end_date = sdf.format(end_end);
+			String end_date = sdf.format(end_day);
 			rootUrl += String.format(
 					"&from-date=%s&to-date=%s",
 					start_date, end_date);
@@ -265,22 +280,22 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			return -2;
 		}
 	}
-		static void CrawlTheWeb() {
-			Calendar calendar_start = Calendar.getInstance();
-			Calendar calendar_end = Calendar.getInstance();
-			for(int year=2005;year<=2018;year++) {
-				for(int month=1;month<=11;month++) {
-					calendar_start.set(year, month, 01);
-					calendar_end.set((month+1==13 ? year+1 : year), (month+1==13 ? 01 : month+1), 01);
-					System.out.println(calendar_start.getTime() + " to " + calendar_end.getTime() );
+	static void CrawlTheWeb() {
+		Calendar calendar_start = Calendar.getInstance();
+		Calendar calendar_end = Calendar.getInstance();
+		for(int year=2000;year>=2000;year--) {
+			for(int month=1;month<=11;month++) {
+				calendar_start.set(year, month, 01);
+				calendar_end.set((month+1==13 ? year+1 : year), (month+1==13 ? 01 : month+1), 01);
+				System.out.println(calendar_start.getTime() + " to " + calendar_end.getTime() );
 
-					int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", calendar_start.getTime(), calendar_end.getTime() );
-					//int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", null);
+				int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", calendar_start.getTime(), calendar_end.getTime() );
+				//int total = new SearchEngineTheCrawlers().crawlNewspaper("The Guardian", null);
 
-					System.out.println("Total articles: " + total);
-				}
+				System.out.println("Total articles: " + total);
 			}
 		}
+	}
 		
 		
 	int ExtractInfoFromArticle(FileWriter csvWriter1, JsonNode JsonArticle) {
@@ -363,11 +378,12 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			//FIXME: CSVInit exeption
 		}
 
+		/*
 		article.stemNTokenize();
 		tokens.addAll(article.getUniqueTokens());
 		log(""+tokens.size(), "tokenSize");
 		log(article.toString(), "LightDB.csv");
-		
+		*/
 		
 		
 		return 1;
@@ -393,11 +409,60 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		csvWriter1.append(article.toString());
 		csvWriter1.append("\n");
 	}
+	static void MergeAllFiles(String directory, String outputFile){//Constants.ROOT_DIR+"offline.csv"
+		System.out.println("MergeAllFiles");
+		try {
+		// create instance of directory
+		File dir = new File(directory);
 
+		// create obejct of PrintWriter for output file
+		PrintWriter pw = new PrintWriter(outputFile);
+
+		// Get list of all the files in form of String Array
+		String[] fileNames = dir.list();
+
+		// loop for reading the contents of all the files
+		// in the directory GeeksForGeeks
+		for (String fileName : fileNames) {
+			System.out.println("Reading from " + fileName);
+
+			// create instance of file from Name of
+			// the file stored in string Array
+			File f = new File(dir, fileName);
+
+			// create object of BufferedReader
+			BufferedReader br = new BufferedReader(new FileReader(f));
+
+			//pw.println("Contents of file " + fileName);
+
+			// Read from current file
+			String line = br.readLine();
+			while (line != null) {
+				// write to the output file
+				pw.println(line);
+				line = br.readLine();
+			}
+			pw.flush();
+		}
+		System.out.println("Reading from all files" +
+				" in directory " + dir.getName() + " Completed");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
     /**
      * transform raw articles to LightDB.csv
-     */
-	static void workOffline() {
+	 * @return
+	 */
+	static HashMap<String, Map<Integer, Integer>> workOffline() {
+		String offlineIn1File = "offline.csv";//Constants.ROOT_DIR+
+		String LightIn1File = "LightDB.csv";
+		SearchEngineTheCrawlers.MergeAllFiles(Constants.ROOT_DIR+"full\\", offlineIn1File);
+		return workOffline(offlineIn1File, LightIn1File);
+
+	}
+	static HashMap<String, Map<Integer, Integer>> workOffline(String fullDBfile, String lightDBfile) {
+		System.out.println("workOffline:\n"+fullDBfile+"\n"+lightDBfile);
 		FileWriter fTokenSize;
 		FileWriter fNonUniqueTokenSize;
 		FileWriter fLightDB;
@@ -405,16 +470,15 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		BufferedWriter outLightDB;
 		BufferedWriter outNonUniqueTokenSize;
 		try {
-			fTokenSize = new FileWriter("tokenSize", Constants.OVERWITE_FILE);
-			fLightDB = new FileWriter("LightDB.csv", Constants.OVERWITE_FILE);
-			fNonUniqueTokenSize = new FileWriter("NonUniqueTokenSize.csv", Constants.OVERWITE_FILE);
-			outTokenSize = new BufferedWriter(fTokenSize);
+			fLightDB = new FileWriter(lightDBfile, Constants.OVERWITE_FILE);//"LightDB.csv"
+			//fTokenSize = new FileWriter("tokenSize", Constants.OVERWITE_FILE);
+			//fNonUniqueTokenSize = new FileWriter("NonUniqueTokenSize.csv", Constants.OVERWITE_FILE);
+			//outTokenSize = new BufferedWriter(fTokenSize);
 			outLightDB = new BufferedWriter(fLightDB);
-			outNonUniqueTokenSize = new BufferedWriter(fNonUniqueTokenSize);
-
+			//outNonUniqueTokenSize = new BufferedWriter(fNonUniqueTokenSize);
 		} catch (IOException e1) {
 			e1.printStackTrace();
-			return;
+			return null;
 		}
 
 		BufferedReader br = null;
@@ -427,15 +491,18 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		Map<Integer, Pair<Integer, Integer>> articleIdToHeavyArticlePos = new HashMap<>(); // for idxDico
 		int articleStartPos = 0;
 
+		Map<String, Integer> tokensOccurrence = new TreeMap<>();
+
+		HashMap<String, Map<Integer, Integer>> preIndex;
 		try {
-				FileReader fr = new FileReader("offline.csv");
+				FileReader fr = new FileReader(fullDBfile);//"offline.csv"
 				br = new BufferedReader(fr);
 				//String Encoding = fr.getEncoding();
 				//br.readLine();//skip line 1 // faiz: why skip first line?? In offline.csv, there is content in first line // kim , you are right, it was headerline, now it is deleted
 				int i=0;
 				//Pair<String, int> pair = brReadLine(br);
 				while ((line = br.readLine()) != null) {
-					if ((i++) %400==1) {System.out.print(".");}
+					if ((i++) %1000==1) {System.out.print(".");}
 
 
 					String[] part = line.split(Constants.CSV_SEPARATOR);
@@ -455,34 +522,75 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 
 
-					Article article = new Article( new Integer( nb ), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)),part[4],
-							part[5],part[6],Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+					//Article article = new Article( new Integer( nb ), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)),part[4],
+					//		part[5],part[6],Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+					Article article = new Article( new Integer( nb ), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)),part[3],
+							part[4],part[5],Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
 					totBefore +=  article.text.length() +article.headline.length();
 					article.stemNTokenize();
 					totAfter +=  article.text.length() +article.headline.length();
 
-					/*if (nb==39016){
-						System.out.println(article.authors);
-						System.out.println(article);
-					}*/
+					for(String token: (article.headline+" "+article.text).split(" ") ){
+
+						if (!tokensOccurrence.containsKey(token)) {
+							tokensOccurrence.put(token, 1);
+						} else {
+							tokensOccurrence.put(token, tokensOccurrence.get(token) + 1);
+						}
+
+					}
 
 					tokens.addAll(article.getUniqueTokens());
-					log(""+tokens.size(), outTokenSize);
+					//log(""+tokens.size(), outTokenSize);
 					totTokens += article.getNonUniqueTokens().length;
-					log(""+totTokens, outNonUniqueTokenSize);
+					//log(""+totTokens, outNonUniqueTokenSize);
 					log(article.toString(), outLightDB);
 				}
 
 			} catch (IOException e) {
 				e.printStackTrace();
 			} finally {
-				IdxDico idxDico = new IdxDico();
 
+				int[] distrib = new int[101];
+				for(int i=0;i<101;i++) {distrib[i]=0;}
+				Iterator it = tokensOccurrence.entrySet().iterator();
+				while (it.hasNext()) {
+					Map.Entry pair = (Map.Entry)it.next();
+					distrib[ Math.min(100, (int) pair.getValue() ) ] ++;
+				}
+				System.out.println("distribution");
+			for(int i=0;i<101;i++) {
+				System.out.print(", "+distrib[i]);}
+				int sum = 0;
+
+				int i=100;
+				for(;i>0&& sum+distrib[i]<=100000 ;i--){
+					sum+=distrib[i];
+				}
+				System.out.println("acceptable occ: " + (i-1) );
+				System.out.println("sum "+sum);
+
+
+				preIndex = new HashMap<>(sum+10,1);
+				it = tokensOccurrence.entrySet().iterator();
+				while (it.hasNext()) {
+					Map.Entry pair = (Map.Entry)it.next();
+					if ( ((int) pair.getValue()) > i ){
+						preIndex.put((String)pair.getKey(), new HashMap<>());
+					}
+				}
+				tokensOccurrence=null;
+
+
+
+
+
+				IdxDico idxDico = new IdxDico();
 				idxDico.articleId_To_HeavyArticlePos = articleIdToHeavyArticlePos;
 				idxDico.writeThisToFile();
 
-				System.out.println(totBefore);
-				System.out.println(totAfter);
+				//System.out.println(totBefore);
+				//System.out.println(totAfter);
 				if (br != null) {
 					try {
 						br.close();
@@ -491,20 +599,20 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 					}
 				}
 			}
-		//}
+
 		try {
-			outNonUniqueTokenSize.close();
-			fNonUniqueTokenSize.close();
-			outTokenSize.close();
-			fTokenSize.close();
+			//outNonUniqueTokenSize.close();
+			//fNonUniqueTokenSize.close();
+			//outTokenSize.close();
+			//fTokenSize.close();
 			outLightDB.close();
 			fLightDB.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		log(tokens.toString(), "tokens.txt");
-
+		log(tokens.toString(), "tokens.txt"); // 330 000 for all our articles
+		return preIndex;
 	}
 
 	private static Pair<String,Integer> brReadLine(BufferedReader br) {
