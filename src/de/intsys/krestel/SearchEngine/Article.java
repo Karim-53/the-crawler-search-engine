@@ -4,10 +4,7 @@ import com.sun.istack.internal.Nullable;
 import javafx.util.Pair;
 import opennlp.tools.stemmer.PorterStemmer;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
@@ -89,6 +86,7 @@ public class Article {
 	}
 	public static Article ArticleFromLine(String line) {
 		String[] part = line.split(Constants.CSV_SEPARATOR);//   dicti.read(b,0, len);
+		//System.out.println(part.length);
 		//return new Article(Integer.valueOf(part[0]), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)), part[4],
 		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
 		return new Article(Integer.valueOf(part[0]), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
@@ -106,6 +104,7 @@ public class Article {
         try {//TODO OPEN File ONCE for all queries **********
             RandomAccessFile dicti = new RandomAccessFile(file,"r");
 			//long startTime = System.currentTimeMillis();
+			//Long max=0L;
 			String line;
 
             for(int articleID:articleIDs) {
@@ -113,25 +112,78 @@ public class Article {
 				dicti.seek(start);
                 //int len = pair.getValue();
                 //System.out.println("seek start: "+start);
-				if (offlineArticleID_position.get(articleID+1)!=null){
-				byte[] bytes = new byte[(int) (offlineArticleID_position.get(articleID+1)-start)];
+				Long nextArticlePos=offlineArticleID_position.get(articleID+1);
+				if (nextArticlePos!=null && ((int) (nextArticlePos-start))>0 && ((int) (nextArticlePos-start))<200000){
+					//System.out.println("step1"+offlineArticleID_position.get(articleID+1));
+					//max=Math.max(max,nextArticlePos-start);
+					//System.out.println(articleID + " " +max);
+				byte[] bytes = new byte[(int) (nextArticlePos-start)];
 				dicti.read(bytes);
 				line =new String(bytes);}
 				else {
+					//System.out.println("step2");
 				line = dicti.readLine();
 				}
                 //TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
                 //  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
                 //System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println(line);
                 lista.add( ArticleFromLine(line) );
 
             }
+			//System.out.println(max);
 
             dicti.close();
         } catch (IOException e) {e.printStackTrace();}
         return lista;
 
     }
+	public static List<Article> getHeavyArticlesFromIDOffline1(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){// much slower than the above
+		List<Article> lista = new ArrayList<>();
+		try {//TODO OPEN File ONCE for all queries **********
+			RandomAccessFile dicti = new RandomAccessFile(file,"r");
+			FileInputStream file1 = new FileInputStream(file);
+			//long startTime = System.currentTimeMillis();
+			//Long max=0L;
+			String line;
+
+			for(int articleID:articleIDs) {
+				Long start = offlineArticleID_position.get(articleID);
+
+				//int len = pair.getValue();
+				//System.out.println("seek start: "+start);
+				Long nextArticlePos=offlineArticleID_position.get(articleID+1);
+				if (nextArticlePos!=null && ((int) (nextArticlePos-start))>0 && ((int) (nextArticlePos-start))<200000){
+					//System.out.println("step1"+offlineArticleID_position.get(articleID+1));
+					//max=Math.max(max,nextArticlePos-start);
+					//System.out.println(articleID + " " +max);
+					System.out.println("hereee");
+					byte[] bytes = new byte[(int) (nextArticlePos-start)];
+					System.out.println((int) (long) (start) + " " + (int) (nextArticlePos-start) +" " +bytes);
+					file1.getChannel().position(start);
+					file1.read(bytes);
+					//dicti.read(bytes);
+					line =new String(bytes);}
+				else {
+					dicti.seek(start);
+					//System.out.println("step2");
+					line = dicti.readLine();
+				}
+				//TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
+				//  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+				//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println(line);
+				lista.add( ArticleFromLine(line) );
+
+			}
+			//System.out.println(max);
+
+			dicti.close();
+			file1.close();
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+
+	}
 
 		public static List<Article> getArticlesFromID(List<Integer> articleIDs, Map<Integer, Pair<Integer, Integer>> articleIdToFullArticlePos, String file) {
 		List<Article> lista = new ArrayList<>();

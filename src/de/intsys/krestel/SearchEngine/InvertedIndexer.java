@@ -447,13 +447,26 @@ public class InvertedIndexer {
 
 
 	static public List<Integer> getArticleIdsInPostingList(String aToken, IdxDico idxDico) {
+		//System.out.println("start");
+
 
 		Map<Integer, Integer> postingList = InvertedIndexer.getPostingList(aToken, idxDico);
 		//System.out.println("getArticleIdsInPostingList  "+aToken);
 		//System.out.println(postingList.keySet());
+		//System.out.println("start1");
 		List<Integer> lista = new ArrayList<>(postingList.keySet());
+		//System.out.println("start2");
 		Collections.sort(lista);
 		return lista;
+	}
+	static public HashMap<String,List<Integer>> getArticleIdsInPostingListForBM25(Set<String> setUniqueTokens, IdxDico idxDico) {
+		HashMap<String,List<Integer>> uniqueTokenPostingList= new HashMap<>();
+		for (String a: setUniqueTokens){
+
+		uniqueTokenPostingList.put(a,getArticleIdsInPostingList(a, idxDico));
+		}
+		return uniqueTokenPostingList;
+
 	}
 
 	static public void createDictOfflinecsv(String fileName) {

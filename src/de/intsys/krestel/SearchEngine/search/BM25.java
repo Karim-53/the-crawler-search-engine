@@ -3,7 +3,10 @@ package de.intsys.krestel.SearchEngine.search;
 import de.intsys.krestel.SearchEngine.Article;
 import de.intsys.krestel.SearchEngine.IdxDico;
 import de.intsys.krestel.SearchEngine.InvertedIndexer;
+import javafx.util.Pair;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 
 public class BM25 {
@@ -12,7 +15,7 @@ public class BM25 {
 	static double k2 = 100;
 
 
-	static public double compute(IdxDico idxDico, Set<String> setUniqueTokens, Article article) {
+	static public double compute(IdxDico idxDico, HashMap<String,List<Integer>> uniqueTokenPostingList, Article article) {
 		double score = 0.0;
 		// normalizes Term Freq component document length
 		if(article.score != 0)
@@ -21,18 +24,20 @@ public class BM25 {
 		double avdl = Article.averageLengthPerArticle();
 		double K = k1 * ((1 - b) + b * dl / avdl);		// me ici
 		//Set<String> setUniqueTokens = new HashSet<>(queryTokens);
-		for (String aUniqueToken : setUniqueTokens) {
+		for (String aUniqueToken : uniqueTokenPostingList.keySet()) {
 			// count of token i in article
 			int fi = article.countOfToken(aUniqueToken);
 			// count of token i in query
-			int qfi = countOfTermInQuery(aUniqueToken, setUniqueTokens);
+			int qfi = countOfTermInQuery(aUniqueToken, uniqueTokenPostingList.keySet());
 			// k1 and k2 are set empirically
 			// number of relevant documents containing token i
 			int ri = 0;
 			// number of relevant documents for query
 			int R = 0;
 			// number of documents containing term i
-			long ni = InvertedIndexer.getArticleIdsInPostingList(aUniqueToken, idxDico).size();
+			//Long startTime=System.currentTimeMillis();
+			long ni = uniqueTokenPostingList.get(aUniqueToken).size();
+			//System.out.println("elapsedTime:: BM25 "+ (System.currentTimeMillis() - startTime) );
 			// total number of documents
 			int N = Article.nbProcessedArticles;
 			//I added one at inside the log to remove minus

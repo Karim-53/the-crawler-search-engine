@@ -100,32 +100,52 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
 			List<Article>  searchResult = result.getKey();
 			Set<String> setUniqueTokens = result.getValue(); //i don t need this here
+			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
+
 
 			//rank
+			HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
 			for (Article a:searchResult) {
-				BM25.compute(idxDico, setUniqueTokens, a);
+				BM25.compute(idxDico, uniqueTokenPostingList, a);
 			}
 			searchResult.sort(Article.scoreComparatorDESC);
+			//System.out.println("BM Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			if (IsPhraseQuery){
 				searchResult = Article.PhraseQuery(searchResult, exactquery);
 			}
+			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			//print
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
 			return null;
 		}else{
 			// Case 3: ranked search BM25
-			query = Article.TokenizeTitle( query.replaceAll(" ","_OR_").replaceAll("_", " ") );
+			String tempQuery=query;
+			query = Article.TokenizeTitle( query.replaceAll(" ","_AND_").replaceAll("_", " ") );
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+			//System.out.println(query);
+			if(result.getKey().size()<50){
+				query =Article.TokenizeTitle( tempQuery.replaceAll(" ","_OR_").replaceAll("_", " ") );
+				result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+
+			}
 			//System.out.println(result);
 			List<Article>  searchResult = result.getKey();
 //			System.out.println(searchResult);
 			Set<String> setUniqueTokens = result.getValue();
+			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
+			long startTime = System.currentTimeMillis();
+			HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
+
 			for (Article a:searchResult) {
-				BM25.compute(idxDico, setUniqueTokens, a);
+				BM25.compute(idxDico, uniqueTokenPostingList, a);
 			}
+
+			//System.out.println("BM 25 - "+(System.currentTimeMillis()-startTime)+ "Total -" +(System.currentTimeMillis()-startTime1)+ " ms");
 			searchResult.sort(Article.scoreComparatorDESC);
+			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
+			//System.out.println("print "+(System.currentTimeMillis()-startTime1)+ " ms");
 		}
 		return null;
 	}
