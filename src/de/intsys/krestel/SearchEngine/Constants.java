@@ -16,9 +16,10 @@ public class Constants {
 	public static final String LIST_SEPARATOR = ";";
 	public static final boolean OVERWITE_FILE = false;
 	public static final boolean APPEND_FILE = true;
-	public static final String ROOT_DIR = "TheCrawlers\\media\\SearchEngineTheCrawlers\\";
-	
-	
+	//public static final String ROOT_DIR = "TheCrawlers"+File.separator+"media"+File.separator+"SearchEngineTheCrawlers"+File.separator;
+	public static final String ROOT_DIR = ""; //"TheCrawlers"+File.separator+"media"+File.separator+"SearchEngineTheCrawlers"+File.separator;
+
+
 	private static final String GARDIAN_QUERY_OPT = String.format(
 			"?api-key=%s&show-tags=contributor,keyword&show-fields=bodyText" +
 					"&page-size=%d", Constants.GUARDIAN_API_KEY, Constants.PAGE_PER_QUERY);

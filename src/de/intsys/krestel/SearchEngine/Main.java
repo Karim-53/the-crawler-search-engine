@@ -5,6 +5,8 @@ import java.util.Scanner;
 public class Main {
 
 	public static void main(String[] args) {
+
+		// System.out.println(Constants.ROOT_DIR); this is now an empty string
 		//long estimatedTime = System.currentTimeMillis();
 
 		//System.out.println("==============Crawlers Search Engine================");
