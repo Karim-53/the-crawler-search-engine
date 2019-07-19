@@ -18,6 +18,7 @@ public class BooleanRetrieval {
         query = query.replaceAll(" +", " ");
         String[] queryArray = query.split(" ");
 
+
         Stack<String> operators = new Stack<String>();
         Stack<List<Integer>> operandPostingList = new Stack<>();
         //System.out.println(InvertedIndexer.articleIDList);
@@ -98,7 +99,7 @@ public class BooleanRetrieval {
             }
         } catch (EmptyStackException e) {
             System.out.println("Incorrect Syntax");
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         if (operandPostingList.empty()) {
             System.out.println("Incorrect syntax");

@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Article {
 	//static:            ------------------------------------------------------
@@ -27,6 +28,7 @@ public class Article {
 
 
 	public static HashSet<String> hs = new HashSet<String>();//stopwords list
+	public static HashSet<String> hs2 = new HashSet<String>();//stopwordswithoutoperators
 	static PorterStemmer stem1 = new PorterStemmer();
 
 	static
@@ -39,6 +41,11 @@ public class Article {
 		for(int i=0;i<len;i++)
 		{
 			hs.add(Constants.stopwords[i]);
+		}
+		int len2= Constants.stopwordsWithoutOperators.length;//Article.StopWords(); you do not need this anymore it's loaded on start
+		for(int i=0;i<len2;i++)
+		{
+			hs2.add(Constants.stopwordsWithoutOperators[i]);
 		}
     }
 
@@ -184,6 +191,59 @@ public class Article {
 		return lista;
 
 	}
+	public static List<Article> getHeavyArticlesFromIDOffline2(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){// much slower than the above
+		List<Article> lista = new ArrayList<>();
+
+		try {//TODO OPEN File ONCE for all queries **********
+			long startTime = System.currentTimeMillis();
+			Stream<String> stream = Files.lines(Paths.get(file));
+			stream.forEach(line ->{
+				String temp=checkid(line, articleIDs);
+				if(temp!=null){
+					lista.add(ArticleFromLine(temp));}
+				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+			});
+
+			//Long max=0L;
+			//System.out.println(max);
+
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+
+	}
+	public static List<Article> getHeavyArticlesFromIDOffline4(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){// much slower than the above
+		List<Article> lista = new ArrayList<>();
+
+		try {//TODO OPEN File ONCE for all queries **********
+			FileReader in = new FileReader(file);
+			BufferedReader br = new BufferedReader(in);
+			long startTime = System.currentTimeMillis();
+			String line;
+			while ((line = br.readLine()) != null) {
+				String temp=checkid(line, articleIDs);
+				if(temp!=null){
+					lista.add(ArticleFromLine(temp));}
+				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+			}
+			in.close();
+
+			//Long max=0L;
+			//System.out.println(max);
+
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+
+	}
+	public static String checkid(String line, List<Integer> articleIDs){
+		String[] part = line.split(Constants.CSV_SEPARATOR);
+
+		if (articleIDs.contains(Integer.valueOf(part[0]))){
+			return line;
+		}
+
+		return null;
+	}
+
 
 		public static List<Article> getArticlesFromID(List<Integer> articleIDs, Map<Integer, Pair<Integer, Integer>> articleIdToFullArticlePos, String file) {
 		List<Article> lista = new ArrayList<>();
@@ -268,7 +328,9 @@ public class Article {
             //System.out.println(a.headline.replaceAll("(\")|(\")", "").trim());
             System.out.println(a.url.replaceAll("(\")|(\")", "").trim());
 
+
             List<String> description =Summary(a.text,setUniqueTokens);
+
 
 			Random rand = new Random();
 			for (int i=0; 0<description.size() && i<5; i++){//select random items from the list to print.. print only 5
@@ -276,6 +338,7 @@ public class Article {
 				System.out.println(description.get(next));
 				description.remove(next);
             }
+
 
             //System.out.println("==========================================================================================================================");
 			topK--;

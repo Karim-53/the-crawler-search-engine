@@ -72,14 +72,33 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
 		boolean IsPhraseQuery = false;
 		String exactquery = query;
+
 		if (query.matches("\".*?\"")){
 			System.out.println("Phrase Queries");
 			IsPhraseQuery = true;
 			exactquery = query.substring(1, query.length()-1);
-			query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
+			query=exactquery;
+			//System.out.println(exactquery);
+
 		}
 
 		query = Article.tokenizeMinimumChange(query);
+		String[] queryArray = query.split(" ");
+		for (int i = 0; i < queryArray.length; i++) {// the query was npt working intitially because the stopwords where present and in AND it checks for posting list for "stopwords" . Since its
+			if(Article.hs2.contains(queryArray[i].toLowerCase())) {//empty. it returned AND [empty set] which gave empty set.hs2 is stopwrords without operator hashmap
+				queryArray[i]="";}
+			else {
+				queryArray[i]=queryArray[i];}
+		}
+		query= String.join(" ",queryArray);
+		query=query.trim().replaceAll(" +", " ");
+		if(IsPhraseQuery==true){
+		    query=query.replaceAll("\\b(and|or|not)\\b","").replaceAll(" +"," ").replaceAll("\" ","\"");// this step is done so as to
+		    query=query.trim();//work for exact queries containing operators
+            //System.out.println(query);
+			query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
+		}
+        //System.out.println(query);
 		//System.out.println("tokenizeMinimumChange(query) = " + query);
 
 		// Case 1: if you are searching for 1 word:
@@ -101,6 +120,9 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			List<Article>  searchResult = result.getKey();
 			Set<String> setUniqueTokens = result.getValue(); //i don t need this here
 			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
+            if (IsPhraseQuery){
+                searchResult = Article.PhraseQuery(searchResult, exactquery);
+            }
 
 
 			//rank
@@ -110,9 +132,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			}
 			searchResult.sort(Article.scoreComparatorDESC);
 			//System.out.println("BM Total "+(System.currentTimeMillis()-startTime1)+ " ms");
-			if (IsPhraseQuery){
-				searchResult = Article.PhraseQuery(searchResult, exactquery);
-			}
+
 			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			//print
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
@@ -124,7 +144,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
 			//System.out.println(query);
-			if(result.getKey().size()<50){
+			if(result.getKey().size()<11){
 				query =Article.TokenizeTitle( tempQuery.replaceAll(" ","_OR_").replaceAll("_", " ") );
 				result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
 
@@ -135,7 +155,11 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			Set<String> setUniqueTokens = result.getValue();
 			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
 			long startTime = System.currentTimeMillis();
+            if (IsPhraseQuery){
+                searchResult = Article.PhraseQuery(searchResult, exactquery);
+            }
 			HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
+
 
 			for (Article a:searchResult) {
 				BM25.compute(idxDico, uniqueTokenPostingList, a);
@@ -143,6 +167,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 			//System.out.println("BM 25 - "+(System.currentTimeMillis()-startTime)+ "Total -" +(System.currentTimeMillis()-startTime1)+ " ms");
 			searchResult.sort(Article.scoreComparatorDESC);
+
 			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
 			//System.out.println("print "+(System.currentTimeMillis()-startTime1)+ " ms");
