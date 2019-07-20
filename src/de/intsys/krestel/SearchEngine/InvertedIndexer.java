@@ -357,15 +357,22 @@ public class InvertedIndexer {
 
 	}
 
+	static Map<String, Map<Integer, Integer> > cachedPostingList = new HashMap<>();
 
 	static public Map<Integer, Integer> getPostingList(String token, IdxDico idxDico) {
 		//System.out.println("getPostingList " + token);
-		//TODO Add Caching cause we call get multiple time on the same tokens
+		// Add Caching cause we call get multiple time on the same tokens
+		if (cachedPostingList.containsKey(token)){
+			System.out.println("from cache :)");
+			return cachedPostingList.get(token);
+		}
 		Map<String, Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
 
 		Pair<Integer, Integer> pair = dictionary.get(token);
 		if (pair != null) {
-			return loadOnePostingListFromCompressedIndex(pair.getKey(), pair.getValue());
+			Map<Integer, Integer> postingList =  loadOnePostingListFromCompressedIndex(pair.getKey(), pair.getValue());
+			cachedPostingList.put(token,postingList);
+			return postingList;
 		} else {
 			return new HashMap<>();
 		}
@@ -447,15 +454,10 @@ public class InvertedIndexer {
 
 
 	static public List<Integer> getArticleIdsInPostingList(String aToken, IdxDico idxDico) {
-		//System.out.println("start");
-
-
 		Map<Integer, Integer> postingList = InvertedIndexer.getPostingList(aToken, idxDico);
 		//System.out.println("getArticleIdsInPostingList  "+aToken);
 		//System.out.println(postingList.keySet());
-		//System.out.println("start1");
 		List<Integer> lista = new ArrayList<>(postingList.keySet());
-		//System.out.println("start2");
 		Collections.sort(lista);
 		return lista;
 	}
@@ -482,7 +484,7 @@ public class InvertedIndexer {
 				Long tempFilePointer = dicti.getFilePointer();
 				while ((curLine = dicti.readLine()) != null) {
 					if (Math.random() < 0.0005) {System.out.print(":");}
-					String[] text1 = curLine.split(",");
+					String[] text1 = curLine.split(Constants.CSV_SEPARATOR);
 					dictionary.put(Integer.valueOf(text1[0]), tempFilePointer);
 
 					tempFilePointer = dicti.getFilePointer();
@@ -516,7 +518,7 @@ public class InvertedIndexer {
 			try {
 				//Long tempFilePointer = dicti.getFilePointer();
 				while ((curLine = file.readLine()) != null) {
-					String[] text1 = curLine.split(",");
+					String[] text1 = curLine.split(Constants.CSV_SEPARATOR);
 //					System.out.println(articleStartPos);
 //					System.out.println(curLine.length());
 					dictionary.put(Integer.valueOf(text1[0]), articleStartPos);

@@ -28,6 +28,9 @@ public class Main {
 		//searchEngineTheCrawlers.search("Germany",10,0);
 		//searchEngineTheCrawlers.search("Tropical fish",10,0);
 		//searchEngineTheCrawlers.search("g20",10,0);
+		//searchEngineTheCrawlers.search("12",10,0);
+		searchEngineTheCrawlers.search("\"fridays for future\"",10,0);
+		searchEngineTheCrawlers.search("\"Commission President\"",10,0);
 
 		Scanner input = new Scanner(System.in);
 		while_loop:

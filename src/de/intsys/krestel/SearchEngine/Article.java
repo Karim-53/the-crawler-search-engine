@@ -75,29 +75,48 @@ public class Article {
 		}
 	}
 	public Article(@Nullable Integer article_nb, String article_id,String article_url, List<String> article_authors,String article_text,
-	  String article_headline,String article_publication_timestamp,
-	  List<String> article_categories) {
+				   String article_headline,String article_publication_timestamp,
+				   List<String> article_categories) {
 		this(article_nb);
 		uid=tokenizeMinimumChange(article_id);
 		url=encodeComma(article_url);
 		authors=article_authors.stream()
-                .map(s -> tokenizeMinimumChange(s))
-                .collect(Collectors.toList());
+				.map(s -> tokenizeMinimumChange(s))
+				.collect(Collectors.toList());
 		text=tokenizeMinimumChange(article_text);
 		headline=tokenizeMinimumChange(article_headline);
 		publication_timestamp=tokenizeMinimumChange(article_publication_timestamp);
 		categories = article_categories.stream()
-                .map(s -> tokenizeMinimumChange(s))
-                .collect(Collectors.toList());
+				.map(s -> tokenizeMinimumChange(s))
+				.collect(Collectors.toList());
+		score=0;
+	}
+	//Faster Version for final Pretty print not for indexing
+	public Article(@Nullable Integer article_nb, String article_url, List<String> article_authors,String article_text,
+				   String article_headline,String article_publication_timestamp) {
+		this(article_nb);
+		uid=null;
+		url=article_url;
+		authors=article_authors.stream()
+				.map(s -> tokenizeMinimumChange(s))
+				.collect(Collectors.toList());
+		text=tokenizeMinimumChange(article_text);
+		headline=tokenizeMinimumChange(article_headline);
+		publication_timestamp=tokenizeMinimumChange(article_publication_timestamp);
+		categories = null;
 		score=0;
 	}
 	public static Article ArticleFromLine(String line) {
-		String[] part = line.split(Constants.CSV_SEPARATOR);//   dicti.read(b,0, len);
-		//System.out.println(part.length);
-		//return new Article(Integer.valueOf(part[0]), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)), part[4],
+		String[] part = line.split(Constants.CSV_SEPARATOR);
 		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
 		return new Article(Integer.valueOf(part[0]), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
 				part[4], part[5], Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
+	}
+	public static Article FastArticleFromLine(String line) {
+		String[] part = line.split(Constants.CSV_SEPARATOR);
+		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
+		return new Article(Integer.valueOf(part[0]), part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
+				part[4], part[5]);
 	}
 	public static List<Article> getLightArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
 		return getArticlesFromID( articleIDs,  idxDico.articleId_To_LightArticlePos, "LightDB.csv");
@@ -108,42 +127,33 @@ public class Article {
 
 	public static List<Article> getHeavyArticlesFromIDOffline(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){
         List<Article> lista = new ArrayList<>();
-        try {//TODO OPEN File ONCE for all queries **********
+        try {
             RandomAccessFile dicti = new RandomAccessFile(file,"r");
-			//long startTime = System.currentTimeMillis();
 			//Long max=0L;
 			String line;
 
             for(int articleID:articleIDs) {
+				long startTime = System.currentTimeMillis();
                 Long start = offlineArticleID_position.get(articleID);
 				dicti.seek(start);
-                //int len = pair.getValue();
-                //System.out.println("seek start: "+start);
 				Long nextArticlePos=offlineArticleID_position.get(articleID+1);
 				if (nextArticlePos!=null && ((int) (nextArticlePos-start))>0 && ((int) (nextArticlePos-start))<200000){
-					//System.out.println("step1"+offlineArticleID_position.get(articleID+1));
-					//max=Math.max(max,nextArticlePos-start);
-					//System.out.println(articleID + " " +max);
-				byte[] bytes = new byte[(int) (nextArticlePos-start)];
-				dicti.read(bytes);
-				line =new String(bytes);}
+					byte[] bytes = new byte[(int) (nextArticlePos-start)];
+					dicti.read(bytes);
+					line =new String(bytes);}
 				else {
-					//System.out.println("step2");
-				line = dicti.readLine();
+					line = dicti.readLine();
 				}
-                //TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
-                //  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
-                //System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
-				//System.out.println(line);
-                lista.add( ArticleFromLine(line) );
+                // DONE improve Java's I/O performance : RandomAccessFile + readLine are very slow
+                // https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+                lista.add( FastArticleFromLine(line) );
+				//if ((System.currentTimeMillis() - startTime) > 5){ System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );}
 
-            }
-			//System.out.println(max);
 
+			}
             dicti.close();
         } catch (IOException e) {e.printStackTrace();}
         return lista;
-
     }
 	public static List<Article> getHeavyArticlesFromIDOffline1(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){// much slower than the above
 		List<Article> lista = new ArrayList<>();
@@ -410,7 +420,7 @@ public class Article {
 		for (Article a:searchResult) {
 			if (a.text.indexOf(exactquery)>=0) {
 				lista.add(a);
-				//if (lista.size()>=10) {break;}
+				//if (lista.size()>=10) {break;} // maybe we should put this back
 			}
 		}
 		if (lista.size()==0){
@@ -482,7 +492,7 @@ public class Article {
 		txt = txt.replaceAll("(\\d)(,)(\\d)", "$1$3"); //separateur de millier
 		txt = txt.replaceAll("(\\w)([,/])(\\w)", "$1 $3")
 				.replaceAll("(\\.){2,}"," ");
-		txt = txt.replaceAll(",", " "); //no comma at all: we need this for storing
+		txt = txt.replaceAll(Constants.CSV_SEPARATOR, " "); //no comma at all: we need this for storing
 		
 		return txt;
 	}

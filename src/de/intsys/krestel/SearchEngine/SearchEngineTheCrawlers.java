@@ -78,8 +78,6 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			IsPhraseQuery = true;
 			exactquery = query.substring(1, query.length()-1);
 			query=exactquery;
-			//System.out.println(exactquery);
-
 		}
 
 		query = Article.tokenizeMinimumChange(query);
@@ -95,24 +93,8 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		if(IsPhraseQuery==true){
 		    query=query.replaceAll("\\b(and|or|not)\\b","").replaceAll(" +"," ").replaceAll("\" ","\"");// this step is done so as to
 		    query=query.trim();//work for exact queries containing operators
-            //System.out.println(query);
-			query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
+            query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
 		}
-        //System.out.println(query);
-		//System.out.println("tokenizeMinimumChange(query) = " + query);
-
-		// Case 1: if you are searching for 1 word:
-		/*
-		startTime = System.currentTimeMillis();
-		System.out.println(Article.TokenizeTitle(query));
-		query=Article.PorterStem(Article.TokenizeTitle(query));
-		if(query.contentEquals("stop123")) {
-			break while_loop;}
-		searchResult=InvertedIndexer.searchQuery(query.toLowerCase(), dictionary);
-		estimatedTime = System.currentTimeMillis() - startTime;
-		System.out.println("Search Results (" + estimatedTime + "ms) : " + searchResult);
-*/
-
 		//Case 2 : Bool Operator
 		// if Pattern has some AND OR =>  do a bool OP
 		if (Pattern.compile(".*\\b(AND|OR|NOT|INOT)\\b.*", Pattern.CASE_INSENSITIVE).matcher(query).matches()) {
@@ -142,8 +124,9 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			String tempQuery=query;
 			query = Article.TokenizeTitle( query.replaceAll(" ","_AND_").replaceAll("_", " ") );
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
+			long startTime2 = System.currentTimeMillis();
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
-			//System.out.println(query);
+			System.out.println("BooleanRetrieval.searchBooleanQuery in " + ( System.currentTimeMillis() - startTime2 ) );
 			if(result.getKey().size()<11){
 				query =Article.TokenizeTitle( tempQuery.replaceAll(" ","_OR_").replaceAll("_", " ") );
 				result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
@@ -167,6 +150,10 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 			//System.out.println("BM 25 - "+(System.currentTimeMillis()-startTime)+ "Total -" +(System.currentTimeMillis()-startTime1)+ " ms");
 			searchResult.sort(Article.scoreComparatorDESC);
+			/*for (Article a:searchResult) {
+				System.out.println(a.score);
+			}*/
+
 
 			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);

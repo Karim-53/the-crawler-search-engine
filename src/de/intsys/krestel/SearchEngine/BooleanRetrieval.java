@@ -8,9 +8,6 @@ import java.util.*;
 public class BooleanRetrieval {
 
     static Pair< List<Article> , Set<String> > searchBooleanQuery(String query,  IdxDico idxDico) {
-
-        Map<String,Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
-
         //System.out.println("searchBooleanQuery");
         query = "(" + query + ")";
         query = query.replaceAll("(\\()", "\\( ");
@@ -21,7 +18,6 @@ public class BooleanRetrieval {
 
         Stack<String> operators = new Stack<String>();
         Stack<List<Integer>> operandPostingList = new Stack<>();
-        //System.out.println(InvertedIndexer.articleIDList);
         Set<String> setUniqueTokens = new HashSet<>(); // fo BM25
         try {
 
@@ -111,9 +107,10 @@ public class BooleanRetrieval {
 
         //System.out.println(ArticleIDs);
         long startTime = System.currentTimeMillis();
+        ArticleIDs = LightArticle.eliminateSomeArticles(ArticleIDs,  setUniqueTokens, idxDico);
+
         List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
-        //List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico); //TODO Show real title of the article
-        //System.out.println("elapsedTime:: Article.getLightArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
+        System.out.println("elapsedTime:: Article.getHeavyArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
 
 
         return new Pair<>(  articles    ,   setUniqueTokens );
