@@ -12,8 +12,9 @@ public class Constants {
 	public static final int MIN_ARTICLE_TXT_LENGHT = 100; //FIXME: Correct typo
 	private static final int PAGE_PER_QUERY = 200;//200 possible
 	public static final int MAX_PAGE_CRAWLED = 191; //191 max
-	public static final String CSV_SEPARATOR = ",";
-	public static final String LIST_SEPARATOR = ";";
+	public static final String CSV_SEPARATOR = "|";//",";
+	public static final String CSV_REGEX_SEPARATOR = "[|]";//",";
+	public static final String LIST_SEPARATOR = "&";//";";
 	public static final boolean OVERWITE_FILE = false;
 	public static final boolean APPEND_FILE = true;
 	//public static final String ROOT_DIR = "TheCrawlers"+File.separator+"media"+File.separator+"SearchEngineTheCrawlers"+File.separator;

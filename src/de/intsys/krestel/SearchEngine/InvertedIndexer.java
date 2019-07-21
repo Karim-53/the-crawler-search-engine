@@ -96,14 +96,14 @@ public class InvertedIndexer {
 
 					VByte.encode(outDicoVal, onePostingList_StartPositionInFile);
 
-					if (token.compareTo("mistreat") == 0) {
+					/*if (token.compareTo("mistreat") == 0) {
 						System.out.println("mistreat DeltaPos:");
 						System.out.println(onePostringList_DeltaDocID_count);
 					}
 					if (token.compareTo("illumin") == 0) {
 						System.out.println("illumin DeltaPos:");
 						System.out.println(onePostringList_DeltaDocID_count);
-					}
+					}*/
 
 
 					int bytesizeOfOnePostingList = 0;
@@ -187,7 +187,7 @@ public class InvertedIndexer {
 			String line;
 			int i=0;
 			while ((line = file.readLine()) != null) {
-				System.out.println(i);
+				//System.out.println(i);
 				if ((++i) %1000==0) {
 					System.out.println(i);
 					//System.out.println("     "+index.size());
@@ -217,7 +217,7 @@ public class InvertedIndexer {
 				}*/
 
 
-				String[] part = line.split(Constants.CSV_SEPARATOR);
+				String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
 
 				articleIdToPostingPos.put(Integer.parseInt(part[0]), new Pair<>(articleStartPos, line.length()));
 				articleStartPos += line.length() + 1; // \n char
@@ -363,7 +363,7 @@ public class InvertedIndexer {
 		//System.out.println("getPostingList " + token);
 		// Add Caching cause we call get multiple time on the same tokens
 		if (cachedPostingList.containsKey(token)){
-			System.out.println("from cache :)");
+			//System.out.println("from cache :)");
 			return cachedPostingList.get(token);
 		}
 		Map<String, Pair<Integer, Integer>> dictionary = idxDico.tokenToPostingPos;
@@ -473,7 +473,7 @@ public class InvertedIndexer {
 
 	static public void createDictOfflinecsv(String fileName) {
 		Map<Integer, Long> dictionary = new HashMap<Integer, Long>();
-		System.out.println("createDictOfflinecsv: Creating dictionary for Offline.csv file. This might take a while. 600Mb <-> 26min");
+		System.out.println("createDictOfflinecsv: Creating dictionary for Offline.csv file. This might take a while. 600Mb <-> 26min/42min");
 		try {
 			RandomAccessFile dicti = new RandomAccessFile(fileName, "r");
 
@@ -484,7 +484,7 @@ public class InvertedIndexer {
 				Long tempFilePointer = dicti.getFilePointer();
 				while ((curLine = dicti.readLine()) != null) {
 					if (Math.random() < 0.0005) {System.out.print(":");}
-					String[] text1 = curLine.split(Constants.CSV_SEPARATOR);
+					String[] text1 = curLine.split(Constants.CSV_REGEX_SEPARATOR);
 					dictionary.put(Integer.valueOf(text1[0]), tempFilePointer);
 
 					tempFilePointer = dicti.getFilePointer();
@@ -518,7 +518,7 @@ public class InvertedIndexer {
 			try {
 				//Long tempFilePointer = dicti.getFilePointer();
 				while ((curLine = file.readLine()) != null) {
-					String[] text1 = curLine.split(Constants.CSV_SEPARATOR);
+					String[] text1 = curLine.split(Constants.CSV_REGEX_SEPARATOR);
 //					System.out.println(articleStartPos);
 //					System.out.println(curLine.length());
 					dictionary.put(Integer.valueOf(text1[0]), articleStartPos);

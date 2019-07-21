@@ -26,15 +26,45 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		super();// This should stay as is! Don't add anything here!
 	}
 
+	public static void correctDB() {/*
+		Article.lastNonUsedArticleID = 1;
+		Article.totArticlesLength = 0;
+		Article.nbProcessedArticles = 0;
+		try {
+			PrintWriter pw = new PrintWriter("corrected_NewYorkTimes.csv");
+			String fileName = "full\\NewYorkTimes.csv";
+			System.out.println("Reading from " + fileName);
+			File f = new File(fileName);
+			BufferedReader br = new BufferedReader(new FileReader(f));
+
+			String line = br.readLine();
+			while (line != null) {
+				// write to the output file
+				line=line.replace("\\|","")
+						.replace("\\&",""); //yep we need this :/
+				String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
+				// in "article id"|"article url"|"[article authors]"|"article headline"|"article subtitle"|"article description"|"publication timestamp"|"[article categories]"|"[image captions]"
+				// out "article_id"|"article_url"|"article_authors"|"article_text"|"article_headline"|"publication_timestamp"|"article_categories"
+				if (part[0]=="article_id") continue;
+
+				//if (part.length!=7) { throw new RuntimeException(line+"\n"+ "have more | then expected "+ part.length); }
+				Article a = new Article(null, "", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
+						part[4], part[5], Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
+				//String debugStr = a.toString();
+				pw.println(a.toString());
+				line = br.readLine();
+			}
+			pw.flush();
+
+			System.out.println("correcting Completed");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}*/
+	}
+
 	@Override
 	void index(String dir) { //FIXME use String dir here
-        //InvertedIndexer.buildIndex("LightDB.csv");
-
-        //InvertedIndexer.buildIndex("LightDB.csv", "NoncompressedIndex.txt");//Step 2(this for non compressed index
-
-
-
-		HashMap<String, Map<Integer, Integer>> preIndex = SearchEngineTheCrawlers.workOffline();//Step 1
+        HashMap<String, Map<Integer, Integer>> preIndex = SearchEngineTheCrawlers.workOffline();//Step 1
 
         InvertedIndexer.buildCompressedIndex(preIndex, "LightDB.csv", Constants.ROOT_DIR+"compressedIndex");
 		InvertedIndexer.createDictOfflinecsv("offline.csv"); ////dictionary for offline.csv. should be run with searchEngineTheCrawlers.index method
@@ -68,6 +98,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
+		System.out.println("query: "+query);
 		long startTime1 = System.currentTimeMillis();
 		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
 		boolean IsPhraseQuery = false;
@@ -117,8 +148,8 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
 			//print
-			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
-			return null;
+			ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
+			return PrettySearchResult;
 		}else{
 			// Case 3: ranked search BM25
 			String tempQuery=query;
@@ -126,7 +157,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
 			long startTime2 = System.currentTimeMillis();
 			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
-			System.out.println("BooleanRetrieval.searchBooleanQuery in " + ( System.currentTimeMillis() - startTime2 ) );
+			//System.out.println("BooleanRetrieval.searchBooleanQuery in " + ( System.currentTimeMillis() - startTime2 ) );
 			if(result.getKey().size()<11){
 				query =Article.TokenizeTitle( tempQuery.replaceAll(" ","_OR_").replaceAll("_", " ") );
 				result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
@@ -156,10 +187,10 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 
 			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
-			Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
+			ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
+			return PrettySearchResult;
 			//System.out.println("print "+(System.currentTimeMillis()-startTime1)+ " ms");
 		}
-		return null;
 	}
 
 	@Override
@@ -443,43 +474,55 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	}
 	static void MergeAllFiles(String directory, String outputFile){//Constants.ROOT_DIR+"offline.csv"
 		System.out.println("MergeAllFiles");
+		Article.lastNonUsedArticleID = 1;
+		Article.totArticlesLength = 0;
+		Article.nbProcessedArticles = 0;
 		try {
-		// create instance of directory
-		File dir = new File(directory);
+			File dir = new File(directory);// create instance of directory
+			PrintWriter pw = new PrintWriter(outputFile);// create obejct of PrintWriter for output file
+			String[] fileNames = dir.list();// Get list of all the files in form of String Array
+			// loop for reading the contents of all the files
+			for (String fileName : fileNames) {
+				System.out.println("Reading from " + fileName);
 
-		// create obejct of PrintWriter for output file
-		PrintWriter pw = new PrintWriter(outputFile);
+				// create instance of file from Name of
+				// the file stored in string Array
+				File f = new File(dir, fileName);
 
-		// Get list of all the files in form of String Array
-		String[] fileNames = dir.list();
+				// create object of BufferedReader
+				BufferedReader br = new BufferedReader(new FileReader(f));
 
-		// loop for reading the contents of all the files
-		// in the directory GeeksForGeeks
-		for (String fileName : fileNames) {
-			System.out.println("Reading from " + fileName);
+				//pw.println("Contents of file " + fileName);
 
-			// create instance of file from Name of
-			// the file stored in string Array
-			File f = new File(dir, fileName);
-
-			// create object of BufferedReader
-			BufferedReader br = new BufferedReader(new FileReader(f));
-
-			//pw.println("Contents of file " + fileName);
-
-			// Read from current file
-			String line = br.readLine();
-			while (line != null) {
-				// write to the output file
-				pw.println(line);
-				line = br.readLine();
+				// Read from current file
+				String line = br.readLine();
+				while (line != null) {
+					// write to the output file
+					line = line.replace("\\|", "")
+							.replace("\\&", ""); //yep we need this :/
+					String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
+					if (part.length != 7) {
+						throw new RuntimeException(line + "\n" + "have more | then expected " + part.length);
+					}
+					if (part[0].compareTo("\"article_id\"") != 0) {
+						Article a = new Article(null, "", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
+								part[4], part[5], Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
+						String debugStr = a.toString();
+						pw.println(a.toString());
+					}
+					line = br.readLine();
+				}
+				pw.flush();
 			}
-			pw.flush();
-		}
-		System.out.println("Reading from all files" +
-				" in directory " + dir.getName() + " Completed");
-		} catch (Exception e) {
+			System.out.println("Reading from all files" +
+					" in directory " + dir.getName() + " Completed");
+		} catch (FileNotFoundException e) {
 			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (RuntimeException e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
 	}
     /**
@@ -489,7 +532,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	static HashMap<String, Map<Integer, Integer>> workOffline() {
 		String offlineIn1File = "offline.csv";//Constants.ROOT_DIR+
 		String LightIn1File = "LightDB.csv";
-		SearchEngineTheCrawlers.MergeAllFiles(Constants.ROOT_DIR+"full\\", offlineIn1File);
+		//SearchEngineTheCrawlers.MergeAllFiles(Constants.ROOT_DIR+"full\\", offlineIn1File);
 		return workOffline(offlineIn1File, LightIn1File);
 
 	}
@@ -537,7 +580,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 					if ((i++) %1000==1) {System.out.print(".");}
 
 
-					String[] part = line.split(Constants.CSV_SEPARATOR);
+					String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
 					if ("article id"==part[0]) {continue;}
 					int nb = 0;
 					try {
@@ -556,7 +599,15 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 					//Article article = new Article( new Integer( nb ), part[1], part[2], Arrays.asList(part[3].split(Constants.LIST_SEPARATOR)),part[4],
 					//		part[5],part[6],Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
-					Article article = new Article( new Integer( nb ), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)),part[3],
+					if (part.length!=7){
+						//System.out.println("diff "+part.length+"\n"+line);
+						part = (line+" "+Constants.CSV_SEPARATOR).split(Constants.CSV_REGEX_SEPARATOR);
+						/*for(int j=0;j < part.length;j++ ){
+							System.out.println(part[j]);
+							System.out.println("+");
+						}*/
+					}
+					Article article = new Article( new Integer( nb ), "", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)),part[3],
 							part[4],part[5],Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
 					totBefore +=  article.text.length() +article.headline.length();
 					article.stemNTokenize();
@@ -599,7 +650,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 				for(;i>0&& sum+distrib[i]<=100000 ;i--){
 					sum+=distrib[i];
 				}
-				System.out.println("acceptable occ: " + (i-1) );
+				System.out.println("\nacceptable occ: " + (i-1) );
 				System.out.println("sum "+sum);
 
 

@@ -8,8 +8,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -107,13 +105,13 @@ public class Article {
 		score=0;
 	}
 	public static Article ArticleFromLine(String line) {
-		String[] part = line.split(Constants.CSV_SEPARATOR);
+		String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
 		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
 		return new Article(Integer.valueOf(part[0]), "uid", part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
 				part[4], part[5], Arrays.asList(part[6].split(Constants.LIST_SEPARATOR)));
 	}
 	public static Article FastArticleFromLine(String line) {
-		String[] part = line.split(Constants.CSV_SEPARATOR);
+		String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
 		//		part[5], part[6], Arrays.asList(part[7].split(Constants.LIST_SEPARATOR)));
 		return new Article(Integer.valueOf(part[0]), part[1], Arrays.asList(part[2].split(Constants.LIST_SEPARATOR)), part[3],
 				part[4], part[5]);
@@ -245,7 +243,7 @@ public class Article {
 
 	}
 	public static String checkid(String line, List<Integer> articleIDs){
-		String[] part = line.split(Constants.CSV_SEPARATOR);
+		String[] part = line.split(Constants.CSV_REGEX_SEPARATOR);
 
 		if (articleIDs.contains(Integer.valueOf(part[0]))){
 			return line;
@@ -308,35 +306,24 @@ public class Article {
 		} catch (IOException e) {e.printStackTrace();}
 		return lista;
 	}
-	public static void PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
+	public static String StrClean(String str){
+		return str.replaceAll("(^\")|(\"$)", "").trim();
+	}
+	public static ArrayList<String> PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
 		//System.out.println("Query: "+query);
         System.out.println("==========================================================================================================================");
         System.out.println("Search Results");
 		System.out.println("About " +searchResult.size()+ " Results" +"("+(System.currentTimeMillis()-startTime1)+ " ms)");
-        //System.out.println("==========================================================================================================================");
-		/*String format = "%-8s%-12s%-70s%s%s\n";
-		System.out.println("==========================================================================================================================");
-		System.out.printf(format, "ID", "score", "title", "link","text");
-		System.out.println("==========================================================================================================================");
-
-		for (Article a:searchResult) {
-			System.out.printf(format, a.nb, round(a.score,5), a.headline, a.url,Summary(a.text,setUniqueTokens));
-		}
-		System.out.println("============================================================================");*/
-		int resultno=1;
-
+        int resultno=1;
+		ArrayList<String> prettySearchResult = new ArrayList<>();
 		for (Article a:searchResult){
+			String onePrettySearchResult = "";
 			System.out.println("\n"+ resultno );
-			//System.out.println(round(a.score,5));
-			DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
-			ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
+			//DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
+			//ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
 
-			//Instant instant=Instant.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""));for time in nano
-
-
-			System.out.println("Title:\t\t"+a.headline +"\nAuthors(s):\t"+ String.join(", ", a.authors) +"  -  "+zdt.toLocalDate() +" " + zdt.toLocalTime());
-            //System.out.println(a.headline.replaceAll("(\")|(\")", "").trim());
-            System.out.println(a.url.replaceAll("(\")|(\")", "").trim());
+			onePrettySearchResult+="Title:\t\t"+StrClean(a.headline) +"\nAuthors(s):\t"+ String.join(" "+Constants.LIST_SEPARATOR+" ", a.authors) +"  -  "+a.publication_timestamp;
+			onePrettySearchResult+="\n"+StrClean(a.url);
 
 
             List<String> description =Summary(a.text,setUniqueTokens);
@@ -345,12 +332,13 @@ public class Article {
 			Random rand = new Random();
 			for (int i=0; 0<description.size() && i<5; i++){//select random items from the list to print.. print only 5
 				int next = rand.nextInt(description.size());
-				System.out.println(description.get(next));
+				onePrettySearchResult+="\n"+description.get(next);
 				description.remove(next);
             }
 
 
-            //System.out.println("==========================================================================================================================");
+			System.out.println(onePrettySearchResult);
+			prettySearchResult.add(onePrettySearchResult);
 			topK--;
             if (topK==0){
             	break;
@@ -364,6 +352,7 @@ public class Article {
 			System.out.println("No results Found");
 			System.out.println("==========================================================================================================================");
 		}
+		return prettySearchResult;
 	}
 
 	public static List Summary(String text,Set<String> setUniqueTokens){// can be used for offline.csv
@@ -492,7 +481,7 @@ public class Article {
 		txt = txt.replaceAll("(\\d)(,)(\\d)", "$1$3"); //separateur de millier
 		txt = txt.replaceAll("(\\w)([,/])(\\w)", "$1 $3")
 				.replaceAll("(\\.){2,}"," ");
-		txt = txt.replaceAll(Constants.CSV_SEPARATOR, " "); //no comma at all: we need this for storing
+		txt = txt.replaceAll(Constants.CSV_REGEX_SEPARATOR, " "); //no comma at all: we need this for storing
 		
 		return txt;
 	}
@@ -542,19 +531,19 @@ public class Article {
 	public String toString() {
 		StringBuilder s = new StringBuilder(); 
 		s.append(nb);
-		//s.append(", ");
+		//s.append(Constants.CSV_SEPARATOR);
 		//s.append(uid);
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(url);
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(String.join(Constants.LIST_SEPARATOR,authors));
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(text);
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(headline);
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(publication_timestamp);
-		s.append(", ");
+		s.append(Constants.CSV_SEPARATOR);
 		s.append(String.join(Constants.LIST_SEPARATOR,categories));
 		//s.append("\n");
 		return s.toString();

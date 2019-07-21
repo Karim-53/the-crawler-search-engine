@@ -19,7 +19,7 @@ public class LightArticle {
     public static List<Integer> eliminateSomeArticles(List<Integer> ArticleIDs, Set<String> setUniqueTokens, IdxDico idxDico){
         int newSize = 5000;
         if (ArticleIDs.size()< newSize*1.5 ) return ArticleIDs;
-        System.out.println("LightArticle.eliminateSomeArticles : before : "+ ArticleIDs.size());
+        //System.out.println("LightArticle.eliminateSomeArticles : before : "+ ArticleIDs.size());
         List<LightArticle> lightArticles = new ArrayList<>(ArticleIDs.size());
         for( int id: ArticleIDs){
             lightArticles.add( new LightArticle(id) );
@@ -43,7 +43,7 @@ public class LightArticle {
             ArticleIDs.add( lightArticle.articleID );
             added++;
         }
-        System.out.println("after : "+ ArticleIDs.size());
+        //System.out.println("after : "+ ArticleIDs.size());
         Collections.sort(ArticleIDs);
         return ArticleIDs;
     }

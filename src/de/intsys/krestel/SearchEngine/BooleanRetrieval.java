@@ -110,7 +110,7 @@ public class BooleanRetrieval {
         ArticleIDs = LightArticle.eliminateSomeArticles(ArticleIDs,  setUniqueTokens, idxDico);
 
         List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
-        System.out.println("elapsedTime:: Article.getHeavyArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
+        //System.out.println("elapsedTime:: Article.getHeavyArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
 
 
         return new Pair<>(  articles    ,   setUniqueTokens );
