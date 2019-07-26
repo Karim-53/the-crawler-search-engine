@@ -31,9 +31,9 @@ public class Article {
 
 	static
     {//https://ourcodeworld.com/articles/read/839/how-to-read-parse-from-and-write-to-ini-files-easily-in-java
-		lastNonUsedArticleID = Integer.valueOf(readFileAsString("lastNonUsedArticleID"));
 		totArticlesLength = Integer.valueOf(readFileAsString("totArticlesLength"));
 		nbProcessedArticles = Integer.valueOf(readFileAsString("nbProcessedArticles"));
+		lastNonUsedArticleID = nbProcessedArticles +1 ; // i  don t know if this is correct XD  don t care this var is not used anymore i think XD// Integer.valueOf(readFileAsString("lastNonUsedArticleID"));
 
 		int len= Constants.stopwords.length;//Article.StopWords(); you do not need this anymore it's loaded on start
 		for(int i=0;i<len;i++)
@@ -172,9 +172,9 @@ public class Article {
 					//System.out.println("step1"+offlineArticleID_position.get(articleID+1));
 					//max=Math.max(max,nextArticlePos-start);
 					//System.out.println(articleID + " " +max);
-					System.out.println("hereee");
+					if (!Constants.SilentOutput){ System.out.println("hereee");}
 					byte[] bytes = new byte[(int) (nextArticlePos-start)];
-					System.out.println((int) (long) (start) + " " + (int) (nextArticlePos-start) +" " +bytes);
+					if (!Constants.SilentOutput){System.out.println((int) (long) (start) + " " + (int) (nextArticlePos-start) +" " +bytes);}
 					file1.getChannel().position(start);
 					file1.read(bytes);
 					//dicti.read(bytes);
@@ -209,7 +209,7 @@ public class Article {
 				String temp=checkid(line, articleIDs);
 				if(temp!=null){
 					lista.add(ArticleFromLine(temp));}
-				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
 			});
 
 			//Long max=0L;
@@ -231,7 +231,7 @@ public class Article {
 				String temp=checkid(line, articleIDs);
 				if(temp!=null){
 					lista.add(ArticleFromLine(temp));}
-				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
 			}
 			in.close();
 
@@ -262,16 +262,16 @@ public class Article {
 				Pair<Integer, Integer> pair = articleIdToFullArticlePos.get(articleID);
 				int start = pair.getKey();
 				//int len = pair.getValue();
-				System.out.println("seek start: "+start);
+				//System.out.println("seek start: "+start);
 				dicti.seek(start+1);
 
 				long startTime = System.currentTimeMillis();
 				String line = dicti.readLine();
 				//TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
 				//  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
-				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
 
-				System.out.println(line);
+				//System.out.println(line);
 				lista.add( ArticleFromLine(line) );
 
 			}
@@ -296,7 +296,7 @@ public class Article {
 				String line = dicti.readLine();
 				//TODO improve Java's I/O performance : RandomAccessFile + readLine are very slow *****************************
 				//  https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
-				System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
+				//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
 
 				lista.add( ArticleFromLine(line) );
 
@@ -307,18 +307,21 @@ public class Article {
 		return lista;
 	}
 	public static String StrClean(String str){
-		return str.replaceAll("(^\")|(\"$)", "").trim();
+		return str.replaceAll("(\"$)", "")
+				.replaceAll("(^\")", "")
+				.trim();//
 	}
 	public static ArrayList<String> PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
 		//System.out.println("Query: "+query);
-        System.out.println("==========================================================================================================================");
-        System.out.println("Search Results");
-		System.out.println("About " +searchResult.size()+ " Results" +"("+(System.currentTimeMillis()-startTime1)+ " ms)");
+		if (!Constants.SilentOutput) {
+			System.out.println("==========================================================================================================================");
+			System.out.println("Search Results\nAbout " + searchResult.size() + " Results" + "(" + (System.currentTimeMillis() - startTime1) + " ms)");
+		}
         int resultno=1;
 		ArrayList<String> prettySearchResult = new ArrayList<>();
 		for (Article a:searchResult){
 			String onePrettySearchResult = "";
-			System.out.println("\n"+ resultno );
+			if (!Constants.SilentOutput) { System.out.println("\n"+ resultno ); }
 			//DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
 			//ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
 
@@ -337,7 +340,12 @@ public class Article {
             }
 
 
-			System.out.println(onePrettySearchResult);
+			if (!Constants.SilentOutput){
+				System.out.println(onePrettySearchResult);
+			}else{
+				System.out.println( a.headline +"|"+StrClean(a.url) );
+			}
+
 			prettySearchResult.add(onePrettySearchResult);
 			topK--;
             if (topK==0){
@@ -413,7 +421,7 @@ public class Article {
 			}
 		}
 		if (lista.size()==0){
-			System.out.println("no exact exp found :(");
+			//System.out.println("no exact exp found :(");
 			return searchResult;
 		}
 		return lista;

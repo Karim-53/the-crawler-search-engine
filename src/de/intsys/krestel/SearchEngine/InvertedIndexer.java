@@ -429,7 +429,7 @@ public class InvertedIndexer {
 		String[] text1 = null;
 
 		try {
-			System.out.println(query);
+			if (!Constants.SilentOutput){ System.out.println(query);}
 			RandomAccessFile dicti = new RandomAccessFile("NoncompressedIndex.txt", "r");
 			if (dictionary.get(query) != null) {
 

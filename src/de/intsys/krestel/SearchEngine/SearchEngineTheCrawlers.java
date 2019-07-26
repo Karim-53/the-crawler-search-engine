@@ -98,14 +98,14 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
-		System.out.println("query: "+query);
+		if (!Constants.SilentOutput){System.out.println("query: "+query);}
 		long startTime1 = System.currentTimeMillis();
 		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
 		boolean IsPhraseQuery = false;
 		String exactquery = query;
 
 		if (query.matches("\".*?\"")){
-			System.out.println("Phrase Queries");
+			//System.out.println("Phrase Queries");
 			IsPhraseQuery = true;
 			exactquery = query.substring(1, query.length()-1);
 			query=exactquery;

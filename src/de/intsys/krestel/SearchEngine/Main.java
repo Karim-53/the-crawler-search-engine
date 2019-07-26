@@ -47,20 +47,20 @@ public class Main {
 		Scanner input = new Scanner(System.in);
 		while_loop:
 		while (true) {
-			System.out.println("============================================Crawlers Search Engine========================================================");
-
-
-			System.out.println("Input your query below: ");
+			if (!Constants.SilentOutput) {
+				System.out.println("============================================Crawlers Search Engine========================================================");
+				System.out.println("Input your query below: ");
+			}
 			query = input.nextLine();
 			//System.out.println(query);
 			//startTime1 = System.currentTimeMillis();
-			if (query.contentEquals("stop123")) {
+			if (query.contentEquals("exit")) {
 				break while_loop;
 			}
 			searchEngineTheCrawlers.search(query,10,0);
 		}
 		//*/
-		System.out.println("Application stopped...");
+		//System.out.println("Application stopped...");
 
 
 	}
