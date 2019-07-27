@@ -1,12 +1,10 @@
 package de.intsys.krestel.SearchEngine.search;
 
-import de.intsys.krestel.SearchEngine.Article;
-import de.intsys.krestel.SearchEngine.IdxDico;
-import de.intsys.krestel.SearchEngine.InvertedIndexer;
-import javafx.util.Pair;
+import de.intsys.krestel.SearchEngine.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class BM25 {
@@ -15,18 +13,20 @@ public class BM25 {
 	static double k2 = 100;
 
 
-	static public double compute(IdxDico idxDico, HashMap<String,List<Integer>> uniqueTokenPostingList, Article article) {
+	static public double compute(IdxDico idxDico, HashMap<String,List<Integer>> uniqueTokenPostingList, LightArticle lightArticle) {
 		double score = 0.0;
 		// normalizes Term Freq component document length
-		if(article.score != 0)
-			return article.score;
-		double dl = article.numberOfNonUniqueTokens();
+		if(lightArticle.score != 0.0) {
+			return lightArticle.score;
+		}
+		double dl = SearchEngineTheCrawlers.allArticlesTokenNb.get(lightArticle.articleID); //article.numberOfNonUniqueTokens();
 		double avdl = Article.averageLengthPerArticle();
-		double K = k1 * ((1 - b) + b * dl / avdl);		// me ici
+		double K = k1 * ((1 - b) + b * dl / avdl);
 		//Set<String> setUniqueTokens = new HashSet<>(queryTokens);
 		for (String aUniqueToken : uniqueTokenPostingList.keySet()) {
+			Map<Integer, Integer> PostingList = InvertedIndexer.getPostingList(aUniqueToken, idxDico);
 			// count of token i in article
-			int fi = article.countOfToken(aUniqueToken);
+			int fi = PostingList.getOrDefault(lightArticle.articleID,0); //    article.countOfToken(aUniqueToken);
 			// count of token i in query
 			int qfi = countOfTermInQuery(aUniqueToken, uniqueTokenPostingList.keySet());
 			// k1 and k2 are set empirically
@@ -44,8 +44,8 @@ public class BM25 {
 			double idf = Math.log(((ri + 0.5) / (R - ri + 0.5)) / ((ni - ri + 0.5) / (N - ni - R + ri + 0.5)) + 1); 
 			score += idf * ((k1 + 1) * fi) / (K + fi) * ((k2 + 1) * qfi) / (k2 + qfi);
 		}
-		article.score = score;
-		return score;//*/
+		lightArticle.score = score;
+		return score;
 	}
 
 	private static int countOfTermInQuery(String targetToken, Set<String> queryTokens) {

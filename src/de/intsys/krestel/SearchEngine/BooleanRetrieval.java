@@ -7,7 +7,7 @@ import java.util.*;
 
 public class BooleanRetrieval {
 
-    static Pair< List<Article> , Set<String> > searchBooleanQuery(String query,  IdxDico idxDico) {
+    static Pair< List<LightArticle> , Set<String> > searchBooleanQuery(String query,  IdxDico idxDico) {
         //System.out.println("searchBooleanQuery");
         query = "(" + query + ")";
         query = query.replaceAll("(\\()", "\\( ");
@@ -53,7 +53,7 @@ public class BooleanRetrieval {
                             operandPostingList.push(operand1PostingList);
                             //System.out.println("Intermediate Result : " + operand1PostingList);
                         } else {
-                            System.out.println("Incorrect syntax");
+                            if (!Constants.SilentOutput) { System.out.println("Incorrect syntax"); }
                             break;
 
                         }
@@ -82,7 +82,7 @@ public class BooleanRetrieval {
                         operandPostingList.push(operand1PostingList);
                         //System.out.println("Intermediate Result : " + operand1PostingList);
                     } else {
-                        System.out.println("Incorrect syntax");
+                        if (!Constants.SilentOutput) {System.out.println("Incorrect syntax");}
                         break;
 
                     }
@@ -94,11 +94,11 @@ public class BooleanRetrieval {
 
             }
         } catch (EmptyStackException e) {
-            System.out.println("Incorrect Syntax");
+            if (!Constants.SilentOutput) {System.out.println("Incorrect Syntax");}
             //e.printStackTrace();
         }
         if (operandPostingList.empty()) {
-            System.out.println("Incorrect syntax");
+            if (!Constants.SilentOutput) {System.out.println("Incorrect syntax");}
             return new Pair<>(new ArrayList<>(),new HashSet<>());
         }
         Object[] oArticleIDs = operandPostingList.pop().toArray();
@@ -107,13 +107,13 @@ public class BooleanRetrieval {
 
         //System.out.println(ArticleIDs);
         long startTime = System.currentTimeMillis();
-        ArticleIDs = LightArticle.eliminateSomeArticles(ArticleIDs,  setUniqueTokens, idxDico);
+        //ArticleIDs = LightArticle.eliminateSomeArticles(ArticleIDs,  setUniqueTokens, idxDico);
 
-        List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
+        //List<Article> articles = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
         //System.out.println("elapsedTime:: Article.getHeavyArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
+        List<LightArticle> lightArticles = LightArticle.articleIDsToLightArticlesList(ArticleIDs);
 
-
-        return new Pair<>(  articles    ,   setUniqueTokens );
+        return new Pair<>(  lightArticles    ,   setUniqueTokens );
     }
     static Integer hasPrecedence(String operatorTerm){
         int precedence=5;

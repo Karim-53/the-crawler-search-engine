@@ -116,7 +116,7 @@ public class InvertedIndexer {
 					nextPostingList_StartPositionInFile = onePostingList_EndPositionInFile;
 				}
 
-				System.out.println("stat::max val nextPostingList_StartPositionInFile " + nextPostingList_StartPositionInFile);
+				//System.out.println("stat::max val nextPostingList_StartPositionInFile " + nextPostingList_StartPositionInFile);
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -516,15 +516,10 @@ public class InvertedIndexer {
 			long startTime = System.currentTimeMillis();
 
 			try {
-				//Long tempFilePointer = dicti.getFilePointer();
 				while ((curLine = file.readLine()) != null) {
 					String[] text1 = curLine.split(Constants.CSV_REGEX_SEPARATOR);
-//					System.out.println(articleStartPos);
-//					System.out.println(curLine.length());
 					dictionary.put(Integer.valueOf(text1[0]), articleStartPos);
 					articleStartPos+=curLine.getBytes().length+2;
-					//arrayList.add(tempFilePointer);
-					//tempFilePointer = dicti.getFilePointer();
 					//System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );
 				}
 				System.out.println(dictionary);

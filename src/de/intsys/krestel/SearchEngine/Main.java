@@ -23,27 +23,28 @@ public class Main {
 
 		//Step 4 : query
 		String query = "\"make America great again\""; //"\"make America great again\""; //"Trump AND Putin";
-		//searchEngineTheCrawlers.search(query,10,0);
-		//searchEngineTheCrawlers.search("Trump Putin",10,0);
+		if (!Constants.SilentOutput) {
+			//searchEngineTheCrawlers.search(query,10,0);
+			//searchEngineTheCrawlers.search("Trump Putin",10,0);
 
-		//searchEngineTheCrawlers.search("Germany",10,0);
-		//searchEngineTheCrawlers.search("Tropical fish",10,0);
-		//searchEngineTheCrawlers.search("g20",10,0);
-		//searchEngineTheCrawlers.search("12",10,0);
-		/*searchEngineTheCrawlers.search("Merkel NOT Trump",10,0);
-		searchEngineTheCrawlers.search("San Francisco",10,0);
-		searchEngineTheCrawlers.search("apple tree",10,0);
-		searchEngineTheCrawlers.search("G20 Xi Trump meeting",10,0);
-		searchEngineTheCrawlers.search("\"to be or not to be\"",10,0);
-		searchEngineTheCrawlers.search("Mexico USA wall border",10,0);
-		searchEngineTheCrawlers.search("US-China trade war",10,0);
-		searchEngineTheCrawlers.search("Japan whaling\n",10,0);
-		searchEngineTheCrawlers.search("\"fridays for future\"",10,0);
-		searchEngineTheCrawlers.search("\"Commission President\"",10,0);
-		searchEngineTheCrawlers.search("12",10,0);
-		searchEngineTheCrawlers.search("allah",10,0);
-		searchEngineTheCrawlers.search("trump",10,0);
-*/
+			//searchEngineTheCrawlers.search("Germany",10,0);
+			//searchEngineTheCrawlers.search("Tropical fish",10,0);
+			searchEngineTheCrawlers.search("g20", 10, 0);
+			searchEngineTheCrawlers.search("Merkel NOT Trump", 10, 0);
+			searchEngineTheCrawlers.search("San Francisco", 10, 0);
+			searchEngineTheCrawlers.search("apple tree", 10, 0);
+			searchEngineTheCrawlers.search("G20 Xi Trump meeting", 10, 0);
+			searchEngineTheCrawlers.search("\"to be or not to be\"", 10, 0);
+			searchEngineTheCrawlers.search("Mexico USA wall border", 10, 0);
+			searchEngineTheCrawlers.search("US-China trade war", 10, 0);
+			searchEngineTheCrawlers.search("Japan whaling\n", 10, 0);
+			searchEngineTheCrawlers.search("\"fridays for future\"", 10, 0);
+			searchEngineTheCrawlers.search("\"Commission President\"", 10, 0);
+			searchEngineTheCrawlers.search("12", 10, 0);
+			searchEngineTheCrawlers.search("allah", 10, 0);
+			searchEngineTheCrawlers.search("trump", 10, 0);
+			//*/
+		}
 		Scanner input = new Scanner(System.in);
 		while_loop:
 		while (true) {

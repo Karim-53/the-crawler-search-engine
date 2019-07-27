@@ -120,7 +120,21 @@ public class Article {
 		return getArticlesFromID( articleIDs,  idxDico.articleId_To_LightArticlePos, "LightDB.csv");
 	}
 	public static List<Article> getHeavyArticlesFromID(List<Integer> articleIDs,  IdxDico idxDico) {
-		return getHeavyArticlesFromIDOffline( articleIDs,  idxDico.offlineArticleID_position, "offline.csv");
+		if (SearchEngineTheCrawlers.allArticles == null) {
+			return getHeavyArticlesFromIDOffline(articleIDs, idxDico.offlineArticleID_position, "offline.csv");
+		}else{
+			return getHeavyArticlesFromRAM(articleIDs);
+		}
+	}
+
+	private static List<Article> getHeavyArticlesFromRAM(List<Integer> articleIDs) {
+		long startTime1 = System.currentTimeMillis();
+		List<Article> lista = new ArrayList<>(articleIDs.size()+1);
+		for(int articleID:articleIDs) {
+			lista.add(FastArticleFromLine(SearchEngineTheCrawlers.allArticles.get(articleID)));
+		}
+		//System.out.println("getHeavyArticles "+(System.currentTimeMillis()-startTime1)+ " ms");
+		return lista;
 	}
 
 	public static List<Article> getHeavyArticlesFromIDOffline(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){
@@ -313,7 +327,9 @@ public class Article {
 	}
 	public static ArrayList<String> PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
 		//System.out.println("Query: "+query);
-		if (!Constants.SilentOutput) {
+		if (Constants.SilentOutput) {
+			System.out.println(searchResult.size());
+		}else{
 			System.out.println("==========================================================================================================================");
 			System.out.println("Search Results\nAbout " + searchResult.size() + " Results" + "(" + (System.currentTimeMillis() - startTime1) + " ms)");
 		}
@@ -325,25 +341,22 @@ public class Article {
 			//DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
 			//ZonedDateTime zdt = ZonedDateTime.parse(a.publication_timestamp.toUpperCase().replaceAll("\"|\"",""), dtf);
 
-			onePrettySearchResult+="Title:\t\t"+StrClean(a.headline) +"\nAuthors(s):\t"+ String.join(" "+Constants.LIST_SEPARATOR+" ", a.authors) +"  -  "+a.publication_timestamp;
-			onePrettySearchResult+="\n"+StrClean(a.url);
 
 
-            List<String> description =Summary(a.text,setUniqueTokens);
 
-
-			Random rand = new Random();
-			for (int i=0; 0<description.size() && i<5; i++){//select random items from the list to print.. print only 5
-				int next = rand.nextInt(description.size());
-				onePrettySearchResult+="\n"+description.get(next);
-				description.remove(next);
-            }
-
-
-			if (!Constants.SilentOutput){
-				System.out.println(onePrettySearchResult);
+			if (Constants.SilentOutput) {
+				System.out.println(a.headline.trim() + "|" + a.url.trim() );
 			}else{
-				System.out.println( a.headline +"|"+StrClean(a.url) );
+				onePrettySearchResult+="Title:\t\t"+StrClean(a.headline) +"\nAuthors(s):\t"+ String.join(" "+Constants.LIST_SEPARATOR+" ", a.authors) +"  -  "+a.publication_timestamp;
+				onePrettySearchResult+="\n"+StrClean(a.url);
+				List<String> description =Summary(a.text,setUniqueTokens);
+				Random rand = new Random();
+				for (int i=0; 0<description.size() && i<5; i++){//select random items from the list to print.. print only 5
+					int next = rand.nextInt(description.size());
+					onePrettySearchResult+="\n"+description.get(next);
+					description.remove(next);
+				}
+				System.out.println(onePrettySearchResult);
 			}
 
 			prettySearchResult.add(onePrettySearchResult);
@@ -357,10 +370,14 @@ public class Article {
 
         }
 		if(resultno==1){
-			System.out.println("No results Found");
-			System.out.println("==========================================================================================================================");
+			if (Constants.SilentOutput){
+				System.out.println("0");
+			}else {
+				System.out.println("No results Found");
+				System.out.println("==========================================================================================================================");
+			}
 		}
-		return prettySearchResult;
+		return null; //prettySearchResult;
 	}
 
 	public static List Summary(String text,Set<String> setUniqueTokens){// can be used for offline.csv
@@ -412,17 +429,18 @@ public class Article {
 		return (double) tmp / factor;
 	}
 
-	public static List<Article> PhraseQuery(List<Article> searchResult, String exactquery) {
+	public static List<Article> PhraseQuery(List<LightArticle> searchResult, String exactquery, int topK) {
 		List<Article> lista = new ArrayList<>();
-		for (Article a:searchResult) {
-			if (a.text.indexOf(exactquery)>=0) {
-				lista.add(a);
-				//if (lista.size()>=10) {break;} // maybe we should put this back
+		for (LightArticle a:searchResult) {
+			String line = SearchEngineTheCrawlers.allArticles.get(a.articleID);
+			if (line.indexOf(exactquery)>=0) {
+				lista.add(FastArticleFromLine(line));
+				if (lista.size()>=topK) {break;} // yes we need this line back
 			}
 		}
 		if (lista.size()==0){
-			//System.out.println("no exact exp found :(");
-			return searchResult;
+			if(!Constants.SilentOutput) {System.out.println("no exact exp found :(");}
+			return lista;
 		}
 		return lista;
 		// todo change the tokens to hilight later
@@ -563,7 +581,7 @@ public class Article {
 			data = new String(Files.readAllBytes(Paths.get(Constants.ROOT_DIR+fileName)));
 			return data;
 		}catch (Exception e){
-			System.out.println("file "+fileName+" not found");
+			System.err.println("file "+fileName+" not found");
 			return "1";
 		}
 	}

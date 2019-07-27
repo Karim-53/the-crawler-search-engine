@@ -93,6 +93,14 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		*/
 
 		idxDico = IdxDico.LoadIdxDicoFromfile();
+		this.LoadAllArticles();
+
+		/*
+		for (Map.Entry<String, Pair<Integer, Integer>> entry : idxDico.tokenToPostingPos.entrySet() ) {
+			//System.out.println(entry.getKey() + "/" + entry.getValue());
+			InvertedIndexer.getPostingList( entry.getKey(), idxDico);
+		}
+		*/
 		return true;
 	}
 
@@ -121,76 +129,80 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		}
 		query= String.join(" ",queryArray);
 		query=query.trim().replaceAll(" +", " ");
-		if(IsPhraseQuery==true){
+		if(IsPhraseQuery){
 		    query=query.replaceAll("\\b(and|or|not)\\b","").replaceAll(" +"," ").replaceAll("\" ","\"");// this step is done so as to
 		    query=query.trim();//work for exact queries containing operators
             query = query.replaceAll(" ","_AND_").replaceAll("_", " ") ;
 		}
 		//Case 2 : Bool Operator
+		Pair< List<LightArticle> , Set<String> > result;
 		// if Pattern has some AND OR =>  do a bool OP
 		if (Pattern.compile(".*\\b(AND|OR|NOT|INOT)\\b.*", Pattern.CASE_INSENSITIVE).matcher(query).matches()) {
-			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
-			List<Article>  searchResult = result.getKey();
-			Set<String> setUniqueTokens = result.getValue(); //i don t need this here
-			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
-            if (IsPhraseQuery){
-                searchResult = Article.PhraseQuery(searchResult, exactquery);
-            }
-
-
-			//rank
-			HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
-			for (Article a:searchResult) {
-				BM25.compute(idxDico, uniqueTokenPostingList, a);
-			}
-			searchResult.sort(Article.scoreComparatorDESC);
-			//System.out.println("BM Total "+(System.currentTimeMillis()-startTime1)+ " ms");
-
-			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
-			//print
-			ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
-			return PrettySearchResult;
+			result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
 		}else{
 			// Case 3: ranked search BM25
 			String tempQuery=query;
 			query = Article.TokenizeTitle( query.replaceAll(" ","_AND_").replaceAll("_", " ") );
 			// do a BooleanRetrieval.searchBooleanQuery with lot of OR
-			long startTime2 = System.currentTimeMillis();
-			Pair< List<Article> , Set<String> > result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
-			//System.out.println("BooleanRetrieval.searchBooleanQuery in " + ( System.currentTimeMillis() - startTime2 ) );
-			if(result.getKey().size()<11){
+			result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
+			if(result.getKey().size()<=topK){
 				query =Article.TokenizeTitle( tempQuery.replaceAll(" ","_OR_").replaceAll("_", " ") );
 				result = BooleanRetrieval.searchBooleanQuery(query.toUpperCase(), idxDico  );
-
 			}
-			//System.out.println(result);
-			List<Article>  searchResult = result.getKey();
-//			System.out.println(searchResult);
-			Set<String> setUniqueTokens = result.getValue();
-			//System.out.println("Boolean query results + return Offline results "+(System.currentTimeMillis()-startTime1)+ " ms");
-			long startTime = System.currentTimeMillis();
-            if (IsPhraseQuery){
-                searchResult = Article.PhraseQuery(searchResult, exactquery);
-            }
-			HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
-
-
-			for (Article a:searchResult) {
-				BM25.compute(idxDico, uniqueTokenPostingList, a);
-			}
-
-			//System.out.println("BM 25 - "+(System.currentTimeMillis()-startTime)+ "Total -" +(System.currentTimeMillis()-startTime1)+ " ms");
-			searchResult.sort(Article.scoreComparatorDESC);
-			/*for (Article a:searchResult) {
-				System.out.println(a.score);
-			}*/
-
-
-			//System.out.println("sort Total "+(System.currentTimeMillis()-startTime1)+ " ms");
-			ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,searchResult,setUniqueTokens, topK, startTime1);
-			return PrettySearchResult;
-			//System.out.println("print "+(System.currentTimeMillis()-startTime1)+ " ms");
 		}
+		List<LightArticle> searchResult = result.getKey();
+		Set<String> setUniqueTokens = result.getValue();
+		//rank
+		HashMap<String,List<Integer>> uniqueTokenPostingList= InvertedIndexer.getArticleIdsInPostingListForBM25(setUniqueTokens,idxDico);
+		for (LightArticle a:searchResult) {
+			BM25.compute(idxDico, uniqueTokenPostingList, a);
+		}
+		searchResult.sort(LightArticle.scoreComparatorDESC);
+
+		List<Article> articles; // = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
+		if (IsPhraseQuery){
+			articles = Article.PhraseQuery(searchResult, exactquery,topK);
+		}else{
+			List<Integer> miniLista = new ArrayList<>(topK);
+			int k=0;
+			for(LightArticle a :searchResult){
+				miniLista.add(a.articleID);
+				if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
+			}
+			articles = Article.getHeavyArticlesFromID( miniLista, idxDico);
+		}
+		if (articles.size()==0){
+			articles = ForceFind(exactquery,topK);
+		}
+		//print
+		ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,articles,setUniqueTokens, topK, startTime1);
+		return PrettySearchResult;
+	}
+
+	private List<Article> ForceFind(String exactquery, int topK) {
+		List<LightArticle> searchResult = new ArrayList<>();
+		long startTime = System.currentTimeMillis();
+		int docID = 1;
+		for (String line:allArticles) {
+			if (line.indexOf(exactquery)>=0){
+				searchResult.add(new LightArticle(docID));
+			}
+			if (System.currentTimeMillis() > startTime+ 1900) {
+				if (!Constants.SilentOutput) {
+					System.out.println("time out :(");
+				}
+				break;
+			}
+			docID++;
+		}
+		searchResult.sort(LightArticle.scoreComparatorDESC);
+		int k=0;
+		List<Integer> miniLista = new ArrayList<>();
+		for(LightArticle a :searchResult){
+			miniLista.add(a.articleID);
+			if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
+		}
+		return Article.getHeavyArticlesFromID( miniLista, idxDico);
 	}
 
 	@Override
@@ -516,6 +528,42 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			}
 			System.out.println("Reading from all files" +
 					" in directory " + dir.getName() + " Completed");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (RuntimeException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	public static List<String> allArticles = null;
+	public static List<Integer> allArticlesTokenNb = null;
+	public void LoadAllArticles(){
+		//System.out.println("LoadAllArticles");
+		allArticles = new ArrayList<>(168000);
+		allArticlesTokenNb = new ArrayList<>(168000);
+		allArticles.add("no article have idx = 0");
+		try {
+			File f = new File(Constants.OFFLINE_FILE);// create instance of file from Name of
+			BufferedReader br = new BufferedReader(new FileReader(f));// create object of BufferedReader
+
+			String line = br.readLine();// Read from current file
+			int i = 0;
+			while (line != null) {
+				//System.out.println(i++);
+				allArticles.add(line);
+				String onlySpaceLine = line.replaceAll("[^ ]", "");
+				try{
+					allArticlesTokenNb.add(onlySpaceLine.length());}
+				catch (Exception e) {
+					System.out.println(line);
+					System.out.println(onlySpaceLine);
+					e.printStackTrace();
+				}
+				line = br.readLine();
+
+			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

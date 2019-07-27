@@ -5,6 +5,7 @@ import java.util.List;
 
 public class Constants {
 	public static final boolean SilentOutput = true;
+	public static final String OFFLINE_FILE = "offline.csv";
 	private static final String GUARDIAN_API_KEY = "2d6d0790-aee6-41d4-94e6-035f016fb2e1";
 	public static final String GUARDIAN_WEB_ROOT = "https://www.theguardian.com/";
 	private static final String GUARDIAN_API_ROOT = "http://content.guardianapis.com/search";
