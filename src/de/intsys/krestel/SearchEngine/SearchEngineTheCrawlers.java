@@ -106,6 +106,11 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
+		if (query.indexOf("|")>=0){
+			String[] part = query.split(Constants.CSV_REGEX_SEPARATOR);
+			query = part[0];
+		}
+		query = query.trim();
 		if (!Constants.SilentOutput){System.out.println("query: "+query);}
 		long startTime1 = System.currentTimeMillis();
 		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
@@ -159,6 +164,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		}
 		searchResult.sort(LightArticle.scoreComparatorDESC);
 
+		int totNbArticles = searchResult.size();;
 		List<Article> articles; // = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
 		if (IsPhraseQuery){
 			articles = Article.PhraseQuery(searchResult, exactquery,topK);
@@ -173,10 +179,10 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		}
 		if (articles.size()==0){
 			articles = ForceFind(exactquery,topK);
+			totNbArticles = articles.size();
 		}
 		//print
-		ArrayList<String> PrettySearchResult = Article.PrettyPrintSearchResult(query,articles,setUniqueTokens, topK, startTime1);
-		return PrettySearchResult;
+		return Article.PrettyPrintSearchResult(query,articles,setUniqueTokens, topK, startTime1, totNbArticles);
 	}
 
 	private List<Article> ForceFind(String exactquery, int topK) {

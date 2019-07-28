@@ -325,13 +325,13 @@ public class Article {
 				.replaceAll("(^\")", "")
 				.trim();//
 	}
-	public static ArrayList<String> PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1) {
+	public static ArrayList<String> PrettyPrintSearchResult(String query, List<Article> searchResult,Set<String> setUniqueTokens, Integer topK, long startTime1 , int totNbArticles) {
 		//System.out.println("Query: "+query);
 		if (Constants.SilentOutput) {
-			System.out.println(searchResult.size());
+			System.out.println(totNbArticles); //searchResult.size());
 		}else{
 			System.out.println("==========================================================================================================================");
-			System.out.println("Search Results\nAbout " + searchResult.size() + " Results" + "(" + (System.currentTimeMillis() - startTime1) + " ms)");
+			System.out.println("Search Results\nAbout " + totNbArticles + " Results" + "(" + (System.currentTimeMillis() - startTime1) + " ms)");
 		}
         int resultno=1;
 		ArrayList<String> prettySearchResult = new ArrayList<>();
