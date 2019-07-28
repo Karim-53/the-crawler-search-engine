@@ -137,16 +137,30 @@ public class Article {
 		return lista;
 	}
 
+	public static String getLineArticlesFromOfflineObjFile(int articleID, Map<Integer,Long> offlineArticleID_position, RandomAccessFile dicti) throws IOException {
+		String line;
+
+		Long start = offlineArticleID_position.get(articleID);
+		dicti.seek(start);
+		Long nextArticlePos = offlineArticleID_position.get(articleID + 1);
+		if (nextArticlePos != null && ((int) (nextArticlePos - start)) > 0 && ((int) (nextArticlePos - start)) < 200000) {
+			byte[] bytes = new byte[(int) (nextArticlePos - start)];
+			dicti.read(bytes);
+			line = new String(bytes);
+		} else {
+			line = dicti.readLine();
+		}
+        return line;
+    }
 	public static List<Article> getHeavyArticlesFromIDOffline(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){
-        List<Article> lista = new ArrayList<>();
-        try {
-            RandomAccessFile dicti = new RandomAccessFile(file,"r");
+		List<Article> lista = new ArrayList<>();
+		try {
+			RandomAccessFile dicti = new RandomAccessFile(file,"r");
 			//Long max=0L;
 			String line;
 
-            for(int articleID:articleIDs) {
-				long startTime = System.currentTimeMillis();
-                Long start = offlineArticleID_position.get(articleID);
+			for(int articleID:articleIDs) {
+				Long start = offlineArticleID_position.get(articleID);
 				dicti.seek(start);
 				Long nextArticlePos=offlineArticleID_position.get(articleID+1);
 				if (nextArticlePos!=null && ((int) (nextArticlePos-start))>0 && ((int) (nextArticlePos-start))<200000){
@@ -156,17 +170,17 @@ public class Article {
 				else {
 					line = dicti.readLine();
 				}
-                // DONE improve Java's I/O performance : RandomAccessFile + readLine are very slow
-                // https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
-                lista.add( FastArticleFromLine(line) );
+				// DONE improve Java's I/O performance : RandomAccessFile + readLine are very slow
+				// https://www.javaworld.com/article/2077523/java-tip-26--how-to-improve-java-s-i-o-performance.html
+				lista.add( FastArticleFromLine(line) );
 				//if ((System.currentTimeMillis() - startTime) > 5){ System.out.println("elapsedTime:: read : "+ (System.currentTimeMillis() - startTime) );}
 
 
 			}
-            dicti.close();
-        } catch (IOException e) {e.printStackTrace();}
-        return lista;
-    }
+			dicti.close();
+		} catch (IOException e) {e.printStackTrace();}
+		return lista;
+	}
 	public static List<Article> getHeavyArticlesFromIDOffline1(List<Integer> articleIDs, Map<Integer,Long> offlineArticleID_position, String file){// much slower than the above
 		List<Article> lista = new ArrayList<>();
 		try {//TODO OPEN File ONCE for all queries **********
@@ -429,15 +443,25 @@ public class Article {
 		return (double) tmp / factor;
 	}
 
-	public static List<Article> PhraseQuery(List<LightArticle> searchResult, String exactquery, int topK) {
+	public static List<Article> PhraseQuery(List<LightArticle> searchResult, String exactQuery, int topK, IdxDico idxDico ) {
 		List<Article> lista = new ArrayList<>();
-		for (LightArticle a:searchResult) {
-			String line = SearchEngineTheCrawlers.allArticles.get(a.articleID);
-			if (line.indexOf(exactquery)>=0) {
-				lista.add(FastArticleFromLine(line));
-				if (lista.size()>=topK) {break;} // yes we need this line back
+		try{
+			RandomAccessFile dicti= new RandomAccessFile(Constants.OFFLINE_FILE,"r");
+			for (LightArticle a:searchResult) {
+				String line;
+				if (SearchEngineTheCrawlers.allArticles==null){
+					line = Article.getLineArticlesFromOfflineObjFile( a.articleID, idxDico.offlineArticleID_position,dicti);
+				}else {
+					line = SearchEngineTheCrawlers.allArticles.get(a.articleID);
+				}
+				if (line.indexOf(exactQuery)>=0) {
+					lista.add(FastArticleFromLine(line));
+					if (lista.size()>=topK) {break;} // yes we need this line back
+				}
 			}
-		}
+            dicti.close();
+		} catch (IOException e) {e.printStackTrace();}
+
 		if (lista.size()==0){
 			if(!Constants.SilentOutput) {System.out.println("no exact exp found :(");}
 			return lista;

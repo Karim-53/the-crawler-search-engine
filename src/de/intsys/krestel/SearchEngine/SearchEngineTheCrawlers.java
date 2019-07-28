@@ -115,13 +115,13 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		long startTime1 = System.currentTimeMillis();
 		query = query.replaceAll("\\bUS\\b","USA").toLowerCase();
 		boolean IsPhraseQuery = false;
-		String exactquery = query;
+		String exactQuery = query;
 
 		if (query.matches("\".*?\"")){
 			//System.out.println("Phrase Queries");
 			IsPhraseQuery = true;
-			exactquery = query.substring(1, query.length()-1);
-			query=exactquery;
+			exactQuery = query.substring(1, query.length()-1);
+			query=exactQuery;
 		}
 
 		query = Article.tokenizeMinimumChange(query);
@@ -167,7 +167,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		int totNbArticles = searchResult.size();;
 		List<Article> articles; // = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
 		if (IsPhraseQuery){
-			articles = Article.PhraseQuery(searchResult, exactquery,topK);
+			articles = Article.PhraseQuery(searchResult, exactQuery,topK,idxDico);
 		}else{
 			List<Integer> miniLista = new ArrayList<>(topK);
 			int k=0;
@@ -178,7 +178,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			articles = Article.getHeavyArticlesFromID( miniLista, idxDico);
 		}
 		if (articles.size()==0){
-			articles = ForceFind(exactquery,topK);
+			articles = ForceFind(exactQuery,topK);
 			totNbArticles = articles.size();
 		}
 		//print
@@ -189,17 +189,47 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		List<LightArticle> searchResult = new ArrayList<>();
 		long startTime = System.currentTimeMillis();
 		int docID = 1;
-		for (String line:allArticles) {
-			if (line.indexOf(exactquery)>=0){
-				searchResult.add(new LightArticle(docID));
-			}
-			if (System.currentTimeMillis() > startTime+ 1900) {
-				if (!Constants.SilentOutput) {
-					System.out.println("time out :(");
+		if (allArticles!=null) {
+			for (String line : allArticles) {
+				if (line.indexOf(exactquery) >= 0) {
+					searchResult.add(new LightArticle(docID));
 				}
-				break;
+				if (System.currentTimeMillis() > startTime + 1900) {
+					if (!Constants.SilentOutput) {
+						System.out.println("time out :(");
+					}
+					break;
+				}
+				docID++;
 			}
-			docID++;
+		}else{
+			try {
+				File f = new File(Constants.OFFLINE_FILE);// create instance of file from Name of
+				BufferedReader br = new BufferedReader(new FileReader(f));// create object of BufferedReader
+
+				String line = br.readLine();// Read from current file
+				while (line != null) {
+					if (line.indexOf(exactquery) >= 0) {
+						searchResult.add(new LightArticle(docID));
+					}
+					if (System.currentTimeMillis() > startTime + 1900) {
+						if (!Constants.SilentOutput) {
+							System.out.println("time out :(");
+						}
+						break;
+					}
+					docID++;
+
+					line = br.readLine();
+				}
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (RuntimeException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
 		}
 		searchResult.sort(LightArticle.scoreComparatorDESC);
 		int k=0;
@@ -547,18 +577,17 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 	public static List<Integer> allArticlesTokenNb = null;
 	public void LoadAllArticles(){
 		//System.out.println("LoadAllArticles");
-		allArticles = new ArrayList<>(168000);
+		boolean loadAllArticles =false;
+		if (loadAllArticles) allArticles = new ArrayList<>(168000);
 		allArticlesTokenNb = new ArrayList<>(168000);
-		allArticles.add("no article have idx = 0");
+		if (loadAllArticles) allArticles.add("no article have idx = 0");
 		try {
 			File f = new File(Constants.OFFLINE_FILE);// create instance of file from Name of
 			BufferedReader br = new BufferedReader(new FileReader(f));// create object of BufferedReader
 
 			String line = br.readLine();// Read from current file
-			int i = 0;
 			while (line != null) {
-				//System.out.println(i++);
-				allArticles.add(line);
+				if (loadAllArticles) allArticles.add(line);
 				String onlySpaceLine = line.replaceAll("[^ ]", "");
 				try{
 					allArticlesTokenNb.add(onlySpaceLine.length());}
