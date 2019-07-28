@@ -580,7 +580,8 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		boolean loadAllArticles =false;
 		if (loadAllArticles) allArticles = new ArrayList<>(168000);
 		allArticlesTokenNb = new ArrayList<>(168000);
-		if (loadAllArticles) allArticles.add("no article have idx = 0");
+        if (loadAllArticles) allArticles.add("no article have idx = 0");
+        allArticlesTokenNb.add(0); // no article have idx = 0
 		try {
 			File f = new File(Constants.OFFLINE_FILE);// create instance of file from Name of
 			BufferedReader br = new BufferedReader(new FileReader(f));// create object of BufferedReader
