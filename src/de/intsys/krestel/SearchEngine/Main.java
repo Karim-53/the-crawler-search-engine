@@ -25,7 +25,7 @@ public class Main {
 		String query = "\"make America great again\""; //"\"make America great again\""; //"Trump AND Putin";
 		if (!Constants.SilentOutput) {
 			//searchEngineTheCrawlers.search(query,10,0);
-			//searchEngineTheCrawlers.search("Trump Putin",10,0);
+			searchEngineTheCrawlers.search("Trump Putin",10,0);
 
 			//searchEngineTheCrawlers.search("Germany",10,0);
 			//searchEngineTheCrawlers.search("Tropical fish",10,0);
@@ -42,7 +42,7 @@ public class Main {
 			searchEngineTheCrawlers.search("\"Commission President\"", 10, 0);
 			searchEngineTheCrawlers.search("12", 10, 0);
 			searchEngineTheCrawlers.search("allah", 10, 0);
-			searchEngineTheCrawlers.search("trump", 10, 0);
+			searchEngineTheCrawlers.search("test", 10, 0);
 			//*/
 		}
 		Scanner input = new Scanner(System.in);
