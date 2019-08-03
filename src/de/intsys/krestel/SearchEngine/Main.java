@@ -58,7 +58,7 @@ public class Main {
 			if (query.contentEquals("exit")) {
 				break while_loop;
 			}
-			searchEngineTheCrawlers.search(query,10,0);
+			searchEngineTheCrawlers.search(query,20,0);
 		}
 		//*/
 		//System.out.println("Application stopped...");

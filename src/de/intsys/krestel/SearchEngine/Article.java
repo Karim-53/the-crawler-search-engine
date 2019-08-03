@@ -8,6 +8,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -334,6 +336,34 @@ public class Article {
 		} catch (IOException e) {e.printStackTrace();}
 		return lista;
 	}
+	public static Boolean parseandCheckTime(String articlePublicationTimestamp, String startDate1, String endDate1) {
+		String pattern = "\"EE MMM dd HH:mm:ss z yyyy\"";//|yyy-MM-dd't'hh:mm:ss
+		String pattern2 = "\"yyyy-MM-dd'T'HH:mm:ss'Z'\"";
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern,Locale.ENGLISH);
+		SimpleDateFormat simpleDateFormat2 = new SimpleDateFormat(pattern2,Locale.ENGLISH);
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+		Date articledate = null;
+		Date startDate=null;
+		Date endDate=null;
+		try {
+			articledate = simpleDateFormat.parse(articlePublicationTimestamp);
+
+		} catch (ParseException e) {
+			try {
+				articledate = simpleDateFormat2.parse(articlePublicationTimestamp.toUpperCase());
+			} catch (ParseException ex) {
+				//ex.printStackTrace();
+			}
+			//e.printStackTrace();
+		}
+		try {
+			startDate=formatter.parse(startDate1);
+			endDate=formatter.parse(endDate1);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		return (!(articledate.before(startDate) || articledate.after(endDate)));
+	}
 	public static String StrClean(String str){
 		return str.replaceAll("(\"$)", "")
 				.replaceAll("(^\")", "")
@@ -360,6 +390,8 @@ public class Article {
 
 			if (Constants.SilentOutput) {
 				System.out.println(a.headline.trim() + "|" + a.url.trim() );
+
+
 			}else{
 				onePrettySearchResult+="Title:\t\t"+StrClean(a.headline) +"\nAuthors(s):\t"+ String.join(" "+Constants.LIST_SEPARATOR+" ", a.authors) +"  -  "+a.publication_timestamp;
 				onePrettySearchResult+="\n"+StrClean(a.url);

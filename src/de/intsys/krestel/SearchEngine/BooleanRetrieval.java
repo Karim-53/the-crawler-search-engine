@@ -113,6 +113,7 @@ public class BooleanRetrieval {
         //System.out.println("elapsedTime:: Article.getHeavyArticlesFromID : "+ (System.currentTimeMillis() - startTime) );
         List<LightArticle> lightArticles = LightArticle.articleIDsToLightArticlesList(ArticleIDs);
 
+
         return new Pair<>(  lightArticles    ,   setUniqueTokens );
     }
     static Integer hasPrecedence(String operatorTerm){

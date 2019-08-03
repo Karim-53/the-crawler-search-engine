@@ -8,6 +8,7 @@ import de.intsys.krestel.SearchEngine.search.BM25;
 import javafx.util.Pair;
 
 import java.io.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -106,9 +107,15 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 
 	@Override
 	ArrayList<String> search(String query, int topK, int prf) {
+		String startDate1="2017-06-23";
+		String endDate1 = "2019-07-23";
+
 		if (query.indexOf("|")>=0){
 			String[] part = query.split(Constants.CSV_REGEX_SEPARATOR);
 			query = part[0];
+			String[] dates = part[1].split("_");
+			startDate1 = dates[0];
+			endDate1 = dates[1];
 		}
 		query = query.trim();
 		if (!Constants.SilentOutput){System.out.println("query: "+query);}
@@ -165,22 +172,59 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 		searchResult.sort(LightArticle.scoreComparatorDESC);
 
 		int totNbArticles = searchResult.size();;
-		List<Article> articles; // = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
+		List<Article> articles=new ArrayList<>(); // = Article.getHeavyArticlesFromID( ArticleIDs, idxDico);
 		if (IsPhraseQuery){
-			articles = Article.PhraseQuery(searchResult, exactQuery,topK,idxDico);
-		}else{
-			List<Integer> miniLista = new ArrayList<>(topK);
 			int k=0;
-			for(LightArticle a :searchResult){
-				miniLista.add(a.articleID);
-				if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
+			List<Article> articles1=new ArrayList<>();
+			articles1 = Article.PhraseQuery(searchResult, exactQuery,topK,idxDico);
+			for (Article a:articles1){
+				if (Article.parseandCheckTime(a.publication_timestamp,startDate1,endDate1)){
+					articles.add(a);
+					if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
+
+				}
+
 			}
-			articles = Article.getHeavyArticlesFromID( miniLista, idxDico);
+		}else{
+			//List<Integer> miniLista = new ArrayList<>(topK);
+			int k=0;
+			try {
+				RandomAccessFile dicti = new RandomAccessFile("offline.csv","r");
+				String line;
+				//int ix=0;
+			for(LightArticle a :searchResult){
+
+					//Long max=0L;
+
+					line = Article.getLineArticlesFromOfflineObjFile( a.articleID, idxDico.offlineArticleID_position,dicti);
+					Article article1=Article.FastArticleFromLine(line);
+				//ix++;
+				if (Article.parseandCheckTime(article1.publication_timestamp,startDate1,endDate1)){
+					articles.add(article1);
+					if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
+
+			}}
+				//System.out.println(ix++);
+
+				dicti.close();
+			} catch (IOException e) {e.printStackTrace();}/*
+
+				miniLista.add(a.articleID);
+
+
+			articles = Article.getHeavyArticlesFromID( miniLista, idxDico);*/
 		}
-		if (articles.size()==0){
+
+		if (articles.size()==0 && IsPhraseQuery){
 			articles = ForceFind(exactQuery,topK);
 			totNbArticles = articles.size();
 		}
+		if (articles.size()<topK){
+			totNbArticles=articles.size();
+		}
+        //System.out.println(articles.size());
+
+
 		//print
 		return Article.PrettyPrintSearchResult(query,articles,setUniqueTokens, topK, startTime1, totNbArticles);
 	}
