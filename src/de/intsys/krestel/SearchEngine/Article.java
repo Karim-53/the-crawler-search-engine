@@ -417,7 +417,7 @@ public class Article {
         }
 		if(resultno==1){
 			if (Constants.SilentOutput){
-				System.out.println("0");
+				//System.out.println("0");
 			}else {
 				System.out.println("No results Found");
 				System.out.println("==========================================================================================================================");

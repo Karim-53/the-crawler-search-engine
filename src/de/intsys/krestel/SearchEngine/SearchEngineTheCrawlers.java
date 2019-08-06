@@ -8,7 +8,6 @@ import de.intsys.krestel.SearchEngine.search.BM25;
 import javafx.util.Pair;
 
 import java.io.*;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -181,31 +180,21 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 				if (Article.parseandCheckTime(a.publication_timestamp,startDate1,endDate1)){
 					articles.add(a);
 					if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
-
 				}
-
 			}
 		}else{
-			//List<Integer> miniLista = new ArrayList<>(topK);
 			int k=0;
 			try {
 				RandomAccessFile dicti = new RandomAccessFile("offline.csv","r");
 				String line;
 				//int ix=0;
 			for(LightArticle a :searchResult){
-
-					//Long max=0L;
-
 					line = Article.getLineArticlesFromOfflineObjFile( a.articleID, idxDico.offlineArticleID_position,dicti);
 					Article article1=Article.FastArticleFromLine(line);
-				//ix++;
 				if (Article.parseandCheckTime(article1.publication_timestamp,startDate1,endDate1)){
 					articles.add(article1);
 					if ( (++k) >= Math.min(searchResult.size(),topK) ) break;
-
 			}}
-				//System.out.println(ix++);
-
 				dicti.close();
 			} catch (IOException e) {e.printStackTrace();}/*
 
