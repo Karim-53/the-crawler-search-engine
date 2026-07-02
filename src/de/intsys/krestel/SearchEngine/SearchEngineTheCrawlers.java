@@ -337,7 +337,7 @@ public class SearchEngineTheCrawlers extends SearchEngine {
 			for (int pageNb=1; pageNb < Constants.MAX_PAGE_CRAWLED; pageNb++) {
 
 				//FIXME fix the prob related to this link
-				//http://content.guardianapis.com/search?api-key=2d6d0790-aee6-41d4-94e6-035f016fb2e1&show-tags=contributor,keyword&show-fields=bodyText&page-size=200&order-by=oldest&page=191
+				//http://content.guardianapis.com/search?api-key=YOUR_API_KEY&show-tags=contributor,keyword&show-fields=bodyText&page-size=200&order-by=oldest&page=191
 				//{"response":{"status":"error","message":"Content API does not support paging this far. Please change page or page-size."}}
 				targetUrl = String.format(rootUrl + "&page=%d", pageNb);
 				System.out.println(targetUrl);

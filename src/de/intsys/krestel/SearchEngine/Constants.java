@@ -6,7 +6,9 @@ import java.util.List;
 public class Constants {
 	public static final boolean SilentOutput = true;
 	public static final String OFFLINE_FILE = "offline.csv";
-	private static final String GUARDIAN_API_KEY = "2d6d0790-aee6-41d4-94e6-035f016fb2e1";
+	// Supply your own Guardian Open Platform key via the GUARDIAN_API_KEY environment variable.
+	// Register a free developer key at https://open-platform.theguardian.com/access/
+	private static final String GUARDIAN_API_KEY = System.getenv("GUARDIAN_API_KEY");
 	public static final String GUARDIAN_WEB_ROOT = "https://www.theguardian.com/";
 	private static final String GUARDIAN_API_ROOT = "http://content.guardianapis.com/search";
 	private static final String GUARDIAN_API_world = "http://content.guardianapis.com/world";
