@@ -17,7 +17,7 @@
 
 This project implements a complete information-retrieval system — **crawling, indexing, and
 ranked retrieval** — with every stage written by hand rather than delegated to a search library.
-It was built by *Team 5 "The Crawlers"* for the **Data-Intensive Systems Engineering (DISE)**
+It was built by *Team 5 "The Crawlers"* for the **Design and Implementation of Search Engines**
 course (Summer Semester 2019) and indexes articles from
 [The Guardian's Open Platform API](https://open-platform.theguardian.com/).
 
