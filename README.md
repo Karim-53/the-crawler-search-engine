@@ -154,6 +154,3 @@ Built by **Team 5 — The Crawlers**:
 
 - **Mohamed Karim Belaid** ([@Karim-53](https://github.com/Karim-53))
 - **Faizuddin Nasaruddin**
-
-<sub>Course project for Data-Intensive Systems Engineering (DISE), Summer Semester 2019. A
-developer API key that appeared in earlier commits has since been revoked.</sub>
